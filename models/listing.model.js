@@ -1,3 +1,4 @@
+import e from "express";
 import mongoose from "mongoose";
 
 const listingSchema = new mongoose.Schema(
@@ -69,8 +70,16 @@ const listingSchema = new mongoose.Schema(
       type: [String], // storing multiple image file paths as an array
     },
 
-    status: { type: String, default: "open" },
+    status: {
+      type: String,
+      default: "open",
+      enum: ["open", "pending", "closed"],
+    },
 
+    status_update_by: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
     created_at: {
       type: Date,
       default: Date.now, // automatically set to current date/time on creation

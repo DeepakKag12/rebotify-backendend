@@ -1,3 +1,4 @@
+import e from "express";
 import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
@@ -18,6 +19,7 @@ const userSchema = new mongoose.Schema(
     userType: {
       type: String,
       default: "user",
+      enum: ["user", "admin", "recycler","delivery"],
     },
     address: {
       type: String,
