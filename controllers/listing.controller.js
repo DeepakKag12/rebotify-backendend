@@ -141,6 +141,10 @@ export const updateListingStatus = async (req, res) => {
   try {
     const ListingId = req.params.id;
     const { status } = req.body;
+    const userId = req.user.id;
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized " });
+    }
     if (!status) {
       return res.status(400).json({ message: "Status is required" });
     }
@@ -152,6 +156,15 @@ export const updateListingStatus = async (req, res) => {
     if (!listing) {
       return res.status(404).json({ message: "Listing not found" });
     }
+
+    const lastUpdatedBy = listing.status_update_by;
+    const lastStatus = listing.status;
+    //if last status is pending and how the new one is closed then what we will do is we can make the the guy who make the status pending as the buyer
+    if (lastUpdatedBy && lastStatus === "pending" && status === "closed") {
+      listing.buyer = lastUpdatedBy;
+    }
+    listing.status_update_by = userId;
+
     listing.status = status;
     await listing.save();
     res
@@ -210,3 +223,5 @@ export const getListingsBySellerAndStatus = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+//
