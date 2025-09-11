@@ -224,4 +224,37 @@ export const getListingsBySellerAndStatus = async (req, res) => {
   }
 };
 
-//
+//Once the listing is closed we have the address of the buyer as well as the seller so we can show the address of both the buyer and the seller to the delivery guy
+export const getListingDetailsForDelivery = async (req, res) => {
+  try {
+     //first we need to get all the listing with close status
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized " });
+    }
+    const deliveryGuyId = req.user.id;
+    //find all the listing with closed status
+    const listings = await Listing.find({ status: "closed" })
+      .populate("seller", "name email phone address") //populate seller details
+      .populate("buyer", "name email phone address") //populate buyer details
+      .skip(skip)
+      .limit(limit)
+      .exec();
+
+    const totalListings = await Listing.countDocuments({
+      status: "closed",
+    }).exec();
+    const totalPages = Math.ceil(totalListings / limit);
+    res.status(200).json({
+      page,
+      totalPages,
+      totalListings,
+      listings,
+    });
+  } catch (error) {
+    console.log("Error in getListingDetailsForDelivery:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
