@@ -19,10 +19,11 @@ const userSchema = new mongoose.Schema(
     userType: {
       type: String,
       default: "user",
-      enum: ["user", "admin", "recycler","delivery"],
+      enum: ["user", "admin", "recycler", "delivery"],
     },
     address: {
       type: String,
+      required: true,
       default: "",
     },
     lasLogin: {

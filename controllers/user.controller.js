@@ -4,9 +4,9 @@ import RemovedUser from "../models/removed.model.js";
 // User Registration
 export const signup = async (req, res) => {
   try {
-    const { name, email, password, userType } = req.body;
+    const { name, email, password, userType, address } = req.body;
     //check if any required field is missing
-    if (!name || !email || !password) {
+    if (!name || !email || !password || !address || !userType) {
       return res
         .status(400)
         .json({ message: "Please provide all required fields" });
@@ -25,9 +25,9 @@ export const signup = async (req, res) => {
         .status(400)
         .json({ message: "User with this email already exists" });
     }
-    //TODO:we can bcrypt the password here in production
+    //TODO:we can bcrypt the password here in production as of now for testing purpose we are keeping it simple
     //create new user
-    const newUser = new User({ name, email, password, userType });
+    const newUser = new User({ name, email, password, userType, address });
     await newUser.save();
     res.status(201).json({ message: "User registered successfully" });
   } catch (error) {
