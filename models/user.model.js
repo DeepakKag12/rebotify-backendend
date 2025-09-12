@@ -29,11 +29,11 @@ const userSchema = new mongoose.Schema(
     location: {
       latitude: {
         type: Number,
-        required: true,
+        required: false, // Made optional to avoid validation issues
       },
       longitude: {
         type: Number,
-        required: true,
+        required: false, // Made optional to avoid validation issues
       },
     },
     lasLogin: {
