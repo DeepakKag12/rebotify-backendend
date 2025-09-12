@@ -104,24 +104,7 @@ app.listen(PORT, () => {
     `📚 API Documentation available at: http://localhost:${PORT}/api-docs`
   );
   console.log(
-    `📄 API JSON Spec available at: http://localhost:${PORT}/api-docs.json`
-  );
-  console.log(
-    `🤖 AI Image Analysis available at: http://localhost:${PORT}/api/listings/analyze-images`
-  );
-  console.log(
-    `🤖 AI Image Analysis available at: http://localhost:${PORT}/api/listings/analyze-images`
-  );
-  connectDB();
-});
-
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-  console.log(
-    `📚 API Documentation available at: http://localhost:${PORT}/api-docs`
-  );
-  console.log(
-    `📄 API JSON Spec available at: http://localhost:${PORT}/api-docs.json`
+    `AI Image Analysis available at: http://localhost:${PORT}/api/listings/analyze-images`
   );
   connectDB();
 });

@@ -4,6 +4,7 @@ import {
   detectProductCategory,
   validateAndEnhanceAnalysis,
 } from "../services/claudeService.js";
+import fs from "fs/promises";
 
 // AI-powered image analysis endpoint
 export const analyzeProductImagesEndpoint = async (req, res) => {
@@ -42,12 +43,63 @@ export const analyzeProductImagesEndpoint = async (req, res) => {
 
     // Step 1: Quick category detection for optimized analysis
     console.log("🔍 Detecting product category...");
-    const categoryHint = await detectProductCategory(imagePaths);
+    const categoryHint = await detectProductCategory(imagePaths[0]); // Use first image for category detection
     console.log(`📱 Detected category hint: ${categoryHint || "unknown"}`);
+
+    // If not electronics, clean up and return error
+    if (!categoryHint) {
+      // Delete uploaded files since they're not valid product images
+      await Promise.all(
+        imagePaths.map(async (imagePath) => {
+          try {
+            await fs.unlink(imagePath);
+          } catch (unlinkError) {
+            console.warn("Warning: Could not delete file:", imagePath);
+          }
+        })
+      );
+
+      return res.status(400).json({
+        success: false,
+        error: "invalid_product_type",
+        message: "No electronic products detected in the uploaded images.",
+        suggested_action:
+          "Please upload clear images of electronic products only.",
+        examples:
+          "Valid products: smartphones, laptops, tablets, headphones, gaming consoles, cameras, etc.",
+      });
+    }
 
     // Step 2: Comprehensive AI analysis
     console.log("🤖 Running comprehensive AI analysis...");
     const analysisResult = await analyzeProductImages(imagePaths, categoryHint);
+
+    // Check if AI analysis returned an error
+    if (analysisResult.error === "not_electronics") {
+      // Delete uploaded files since they're not valid product images
+      await Promise.all(
+        imagePaths.map(async (imagePath) => {
+          try {
+            await fs.unlink(imagePath);
+          } catch (unlinkError) {
+            console.warn("Warning: Could not delete file:", imagePath);
+          }
+        })
+      );
+
+      return res.status(400).json({
+        success: false,
+        error: "invalid_product_type",
+        message:
+          analysisResult.message ||
+          "No electronic products detected in the uploaded images.",
+        suggested_action:
+          analysisResult.suggested_action ||
+          "Please upload clear images of electronic products only.",
+        examples:
+          "Valid products: smartphones, laptops, tablets, headphones, gaming consoles, cameras, etc.",
+      });
+    }
 
     // Step 3: Validate and enhance results
     const enhancedResult = validateAndEnhanceAnalysis(analysisResult);
