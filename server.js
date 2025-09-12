@@ -81,9 +81,38 @@ app.get("/", (req, res) => {
       listings: `http://localhost:${PORT}/api/listings`,
       certificates: `http://localhost:${PORT}/api/certificates`,
     },
+    ai_features: {
+      image_analysis: `http://localhost:${PORT}/api/listings/analyze-images`,
+      description:
+        "Upload product images to get AI-powered listing suggestions",
+    },
     version: "1.0.0",
     status: "active",
+    features: [
+      "JWT Authentication",
+      "File Upload Support",
+      "AI-Powered Product Analysis",
+      "Interactive API Documentation",
+      "Real-time Listing Management",
+    ],
   });
+});
+
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(
+    `📚 API Documentation available at: http://localhost:${PORT}/api-docs`
+  );
+  console.log(
+    `📄 API JSON Spec available at: http://localhost:${PORT}/api-docs.json`
+  );
+  console.log(
+    `🤖 AI Image Analysis available at: http://localhost:${PORT}/api/listings/analyze-images`
+  );
+  console.log(
+    `🤖 AI Image Analysis available at: http://localhost:${PORT}/api/listings/analyze-images`
+  );
+  connectDB();
 });
 
 app.listen(PORT, () => {
