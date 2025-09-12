@@ -8,7 +8,7 @@ const anthropic = new Anthropic({
 
 export const analyzeProductImages = async (imagePaths, categoryHint = null) => {
   try {
-    console.log("🤖 Starting product analysis with Claude 3.7 Sonnet...");
+    console.log("Starting product analysis with Claude 3.7 Sonnet...");
 
     if (!imagePaths || imagePaths.length === 0) {
       throw new Error("No images provided for analysis");
@@ -76,7 +76,7 @@ RULES:
     });
 
     const analysisText = response.content[0].text;
-    console.log("🔍 Raw Claude 3.7 response:", analysisText);
+    console.log("Raw Claude 3.7 response:", analysisText);
 
     const cleanedResponse = analysisText
       .replace(/```json\n?|\n?```/g, "")
@@ -86,13 +86,13 @@ RULES:
     try {
       analysisResult = JSON.parse(cleanedResponse);
     } catch (parseError) {
-      console.error('❌ JSON parsing failed, raw response:', analysisText);
+      console.error(' JSON parsing failed, raw response:', analysisText);
       throw new Error('Could not parse AI response as JSON: ' + parseError.message);
     }
 
     // Check if Claude detected non-electronics
     if (analysisResult.error === "not_electronics") {
-      console.log("❌ Non-electronics detected:", analysisResult.message);
+      console.log("Non-electronics detected:", analysisResult.message);
       return {
         error: "invalid_product_type",
         message: "No electronic products detected in the uploaded images.",
@@ -108,7 +108,7 @@ RULES:
          analysisResult.description.toLowerCase().includes('animal') ||
          analysisResult.description.toLowerCase().includes('not an electronic') ||
          analysisResult.description.toLowerCase().includes('not electronic'))) {
-      console.log("❌ Non-electronics detected in description");
+      console.log("Non-electronics detected in description");
       return {
         error: "invalid_product_type",
         message: "No electronic products detected in the uploaded images.",
@@ -125,10 +125,10 @@ RULES:
       processing_time: Date.now(),
     };
 
-    console.log("✅ Claude 3.7 analysis completed successfully");
+    console.log("Claude 3.7 analysis completed successfully");
     return analysisResult;
   } catch (error) {
-    console.error("❌ Error analyzing with Claude 3.7:", error);
+    console.error("Error analyzing with Claude 3.7:", error);
     return {
       error: true,
       message: error.message,
