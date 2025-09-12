@@ -26,6 +26,16 @@ const userSchema = new mongoose.Schema(
       required: true,
       default: "",
     },
+    location: {
+      latitude: {
+        type: Number,
+        required: true,
+      },
+      longitude: {
+        type: Number,
+        required: true,
+      },
+    },
     lasLogin: {
       type: Date,
       default: Date.now,

@@ -4,9 +4,9 @@ import RemovedUser from "../models/removed.model.js";
 // User Registration
 export const signup = async (req, res) => {
   try {
-    const { name, email, password, userType, address } = req.body;
+    const { name, email, password, userType, address,latitude, longitude  } = req.body;
     //check if any required field is missing
-    if (!name || !email || !password || !address || !userType) {
+    if (!name || !email || !password || !address || !userType || !latitude || !longitude) {
       return res
         .status(400)
         .json({ message: "Please provide all required fields" });
