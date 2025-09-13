@@ -118,7 +118,7 @@ const options = {
         },
         UserSignup: {
           type: "object",
-          required: ["name", "email", "password", "address"],
+          required: ["name", "email", "password", "userType", "address"],
           properties: {
             name: {
               type: "string",
@@ -147,23 +147,9 @@ const options = {
             },
             address: {
               type: "string",
-              description: "User address",
-              example: "123 Main St, City, State, ZIP",
-            },
-            location: {
-              type: "object",
-              properties: {
-                latitude: {
-                  type: "number",
-                  description: "Latitude coordinate (optional)",
-                  example: 40.7128,
-                },
-                longitude: {
-                  type: "number",
-                  description: "Longitude coordinate (optional)",
-                  example: -74.006,
-                },
-              },
+              description:
+                "User address (will be automatically converted to coordinates)",
+              example: "Times Square, New York, NY",
             },
           },
         },
@@ -195,23 +181,9 @@ const options = {
             },
             address: {
               type: "string",
-              description: "User address",
-              example: "456 Updated St, City, State, ZIP",
-            },
-            location: {
-              type: "object",
-              properties: {
-                latitude: {
-                  type: "number",
-                  description: "Latitude coordinate",
-                  example: 40.7128,
-                },
-                longitude: {
-                  type: "number",
-                  description: "Longitude coordinate",
-                  example: -74.006,
-                },
-              },
+              description:
+                "User address (will be automatically converted to coordinates)",
+              example: "Central Park, New York, NY",
             },
           },
         },

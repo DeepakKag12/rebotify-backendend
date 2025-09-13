@@ -1,35 +1,77 @@
 import User from "../models/user.model.js";
 import { generateToken } from "../utils/jwt.js";
 import RemovedUser from "../models/removed.model.js";
+import { getCoordinatesFromAddress } from "../utils/locationUtils.js";
+
 // User Registration
 export const signup = async (req, res) => {
   try {
-    const { name, email, password, userType, address,latitude, longitude  } = req.body;
-    //check if any required field is missing
-    if (!name || !email || !password || !address || !userType || !latitude || !longitude) {
+    const { name, email, password, userType, address } = req.body;
+
+    // Check if any required field is missing
+    if (!name || !email || !password || !userType || !address) {
       return res
         .status(400)
-        .json({ message: "Please provide all required fields" });
+        .json({
+          message:
+            "Please provide all required fields (name, email, password, userType, address)",
+        });
     }
-    //validate email format
+
+    // Validate email format
     const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!emailRegex.test(email)) {
       return res
         .status(400)
         .json({ message: "Please provide a valid email address" });
     }
-    //check if user already exists
+
+    // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res
         .status(400)
         .json({ message: "User with this email already exists" });
     }
-    //TODO:we can bcrypt the password here in production as of now for testing purpose we are keeping it simple
-    //create new user
-    const newUser = new User({ name, email, password, userType, address });
+
+    // Get coordinates from address
+    const locationData = await getCoordinatesFromAddress(address);
+
+    if (locationData.error) {
+      return res.status(400).json({
+        message: `Location error: ${locationData.error}`,
+      });
+    }
+
+    // Create new user with address and coordinates
+    const newUser = new User({
+      name,
+      email,
+      password,
+      userType,
+      address: locationData.address,
+      location: {
+        latitude: locationData.location.latitude,
+        longitude: locationData.location.longitude,
+      },
+    });
+
     await newUser.save();
-    res.status(201).json({ message: "User registered successfully" });
+
+    res.status(201).json({
+      message: "User registered successfully",
+      user: {
+        id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+        userType: newUser.userType,
+        address: newUser.address,
+        location: {
+          latitude: newUser.location.latitude,
+          longitude: newUser.location.longitude,
+        },
+      },
+    });
   } catch (error) {
     console.log("Error in signup:", error);
     res.status(500).json({ message: "Internal server error" });
@@ -99,7 +141,6 @@ export const login = async (req, res) => {
 };
 
 //get all users
-
 export const getAllUsers = async (req, res) => {
   try {
     //getall users from db with pagination
@@ -196,15 +237,50 @@ export const updateUserProfile = async (req, res) => {
   try {
     const userId = req.params.id;
     const { name, address } = req.body;
+
     const user = await User.findById(userId).exec();
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    //update fields if provided
-    if (name) user.name = name;
-    if (address) user.address = address;
+
+    // Update basic fields
+    if (name) {
+      user.name = name;
+    }
+
+    // Handle address update and get new coordinates
+    if (address) {
+      const locationData = await getCoordinatesFromAddress(address);
+
+      if (locationData.error) {
+        return res.status(400).json({
+          message: `Location error: ${locationData.error}`,
+        });
+      }
+
+      user.address = locationData.address;
+      user.location = {
+        latitude: locationData.location.latitude,
+        longitude: locationData.location.longitude,
+      };
+    }
+
     await user.save();
-    res.status(200).json({ message: "Profile updated successfully" });
+
+    res.status(200).json({
+      message: "Profile updated successfully",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        userType: user.userType,
+        address: user.address,
+        location: {
+          latitude: user.location.latitude,
+          longitude: user.location.longitude,
+        },
+      },
+    });
   } catch (error) {
     console.log("Error in updateUserProfile:", error);
     res.status(500).json({ message: "Internal server error" });
