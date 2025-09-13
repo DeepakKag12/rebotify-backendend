@@ -73,7 +73,7 @@ const listingSchema = new mongoose.Schema(
     status: {
       type: String,
       default: "open",
-      enum: ["open", "pending", "closed","delivered"],
+      enum: ["open", "pending", "closed"],
     },
 
     status_update_by: {

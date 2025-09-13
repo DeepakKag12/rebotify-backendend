@@ -24,16 +24,16 @@ const userSchema = new mongoose.Schema(
     address: {
       type: String,
       required: true,
-      default: "",
+      trim: true,
     },
     location: {
       latitude: {
         type: Number,
-        required: false, // Made optional to avoid validation issues
+        required: false,
       },
       longitude: {
         type: Number,
-        required: false, // Made optional to avoid validation issues
+        required: false,
       },
     },
     lasLogin: {
