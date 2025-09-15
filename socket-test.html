@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Socket.IO Real-time Test</title>
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background: #f5f5f5;
+      }
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+      }
+      .section {
+        margin: 20px 0;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+      }
+      input,
+      button {
+        margin: 5px;
+        padding: 10px;
+        font-size: 14px;
+      }
+      input[type="text"] {
+        width: 300px;
+      }
+      button {
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      #status {
+        padding: 10px;
+        border-radius: 5px;
+        margin: 10px 0;
+      }
+      .connected {
+        background: #d4edda;
+        color: #155724;
+      }
+      .disconnected {
+        background: #f8d7da;
+        color: #721c24;
+      }
+      #messages {
+        border: 1px solid #ccc;
+        height: 200px;
+        overflow-y: scroll;
+        padding: 10px;
+        background: #f9f9f9;
+      }
+      .message {
+        margin: 5px 0;
+        padding: 8px;
+        background: white;
+        border-radius: 5px;
+        border-left: 4px solid #007bff;
+      }
+      .error {
+        border-left-color: #dc3545;
+        background: #f8d7da;
+      }
+      .success {
+        border-left-color: #28a745;
+        background: #d4edda;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🚀 Socket.IO Real-time Chat Test</h1>
+
+      <div class="section">
+        <h3>1. Connection</h3>
+        <input type="text" id="token" placeholder="Enter JWT Token" />
+        <button onclick="connect()">Connect</button>
+        <button onclick="disconnect()">Disconnect</button>
+        <div id="status" class="disconnected">❌ Disconnected</div>
+      </div>
+
+      <div class="section">
+        <h3>2. Join Chat</h3>
+        <input type="text" id="chatId" placeholder="Enter Chat ID" />
+        <button onclick="joinChat()">Join Chat</button>
+      </div>
+
+      <div class="section">
+        <h3>3. Send Message</h3>
+        <input
+          type="text"
+          id="messageInput"
+          placeholder="Type your message..."
+          onkeypress="handleKeyPress(event)"
+        />
+        <button onclick="sendMessage()">Send Message</button>
+        <button onclick="testTyping()">Test Typing</button>
+      </div>
+
+      <div class="section">
+        <h3>4. Real-time Messages & Events</h3>
+        <div id="messages"></div>
+        <button onclick="clearMessages()">Clear Messages</button>
+      </div>
+    </div>
+
+    <script>
+      let socket = null;
+
+      function connect() {
+        const token = document.getElementById("token").value.trim();
+        if (!token) {
+          addMessage("❌ Please enter JWT token", "error");
+          return;
+        }
+
+        if (socket) {
+          socket.disconnect();
+        }
+
+        addMessage("🔄 Connecting...", "message");
+
+        socket = io("http://localhost:3001", {
+          auth: { token: token },
+        });
+
+        socket.on("connect", () => {
+          document.getElementById("status").textContent = "✅ Connected";
+          document.getElementById("status").className = "connected";
+          addMessage("✅ Successfully connected to server!", "success");
+        });
+
+        socket.on("disconnect", () => {
+          document.getElementById("status").textContent = "❌ Disconnected";
+          document.getElementById("status").className = "disconnected";
+          addMessage("❌ Disconnected from server", "error");
+        });
+
+        socket.on("connect_error", (error) => {
+          addMessage(`❌ Connection error: ${error.message}`, "error");
+        });
+
+        socket.on("joined_chat", (data) => {
+          addMessage(`✅ Successfully joined chat: ${data.chatId}`, "success");
+        });
+
+        socket.on("new_message", (message) => {
+          addMessage(
+            `💬 ${message.sender.name}: ${message.content}`,
+            "success"
+          );
+        });
+
+        socket.on("user_typing", (data) => {
+          addMessage(
+            `⌨️ User ${data.userId} is ${
+              data.isTyping ? "typing..." : "stopped typing"
+            }`,
+            "message"
+          );
+        });
+
+        socket.on("error", (error) => {
+          addMessage(`❌ Socket error: ${error.message}`, "error");
+        });
+      }
+
+      function disconnect() {
+        if (socket) {
+          socket.disconnect();
+          socket = null;
+        }
+      }
+
+      function joinChat() {
+        const chatId = document.getElementById("chatId").value.trim();
+        if (!socket) {
+          addMessage("❌ Please connect first", "error");
+          return;
+        }
+        if (!chatId) {
+          addMessage("❌ Please enter chat ID", "error");
+          return;
+        }
+
+        addMessage(`🔄 Joining chat: ${chatId}`, "message");
+        socket.emit("join_chat", chatId);
+      }
+
+      function sendMessage() {
+        const message = document.getElementById("messageInput").value.trim();
+        const chatId = document.getElementById("chatId").value.trim();
+
+        if (!socket) {
+          addMessage("❌ Please connect first", "error");
+          return;
+        }
+        if (!chatId) {
+          addMessage("❌ Please join a chat first", "error");
+          return;
+        }
+        if (!message) {
+          addMessage("❌ Please enter a message", "error");
+          return;
+        }
+
+        addMessage(`📤 Sending: ${message}`, "message");
+        socket.emit("send_message", {
+          chatId: chatId,
+          content: message,
+        });
+
+        document.getElementById("messageInput").value = "";
+      }
+
+      function testTyping() {
+        const chatId = document.getElementById("chatId").value.trim();
+
+        if (!socket || !chatId) {
+          addMessage("❌ Please connect and join chat first", "error");
+          return;
+        }
+
+        // Send typing = true
+        socket.emit("typing", { chatId: chatId, isTyping: true });
+        addMessage("⌨️ Sent typing indicator: true", "message");
+
+        // Send typing = false after 2 seconds
+        setTimeout(() => {
+          socket.emit("typing", { chatId: chatId, isTyping: false });
+          addMessage("⌨️ Sent typing indicator: false", "message");
+        }, 2000);
+      }
+
+      function handleKeyPress(event) {
+        if (event.key === "Enter") {
+          sendMessage();
+        }
+      }
+
+      function addMessage(message, type) {
+        const messages = document.getElementById("messages");
+        const div = document.createElement("div");
+        div.className = `message ${type}`;
+        div.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+        messages.appendChild(div);
+        messages.scrollTop = messages.scrollHeight;
+      }
+
+      function clearMessages() {
+        document.getElementById("messages").innerHTML = "";
+      }
+    </script>
+  </body>
+</html>
