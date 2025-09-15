@@ -1,4 +1,7 @@
 import express from "express";
+import { createServer } from "http";
+import { Server } from "socket.io";
+import cors from "cors";
 
 //db connection
 import connectDB from "./db/db.js";
@@ -7,18 +10,38 @@ import connectDB from "./db/db.js";
 import userRoutes from "./routes/user.route.js";
 import listingRoutes from "./routes/listing.route.js";
 import certificateRoutes from "./routes/certificate.route.js";
+import chatRoutes from "./routes/chat.route.js";
+
+// Import Socket handlers
+import {
+  authenticateSocket,
+  handleConnection,
+} from "./socket/socketHandlers.js";
 
 // Import Swagger configuration
 import { specs, swaggerUi } from "./swagger.js";
 
 const app = express();
+const server = createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+});
+
 const PORT = process.env.PORT || 3001;
 
 //middleware
 import cookieParser from "cookie-parser";
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// Socket.IO middleware and connection handling
+io.use(authenticateSocket);
+io.on("connection", handleConnection(io));
 
 // Swagger UI setup - This creates the beautiful API documentation interface
 app.use(
@@ -67,6 +90,7 @@ app.get("/api-docs.json", (req, res) => {
 app.use("/api/users", userRoutes);
 app.use("/api/listings", listingRoutes);
 app.use("/api/certificates", certificateRoutes);
+app.use("/api/chats", chatRoutes);
 
 // Root endpoint with API documentation links
 app.get("/", (req, res) => {
@@ -80,6 +104,7 @@ app.get("/", (req, res) => {
       users: `http://localhost:${PORT}/api/users`,
       listings: `http://localhost:${PORT}/api/listings`,
       certificates: `http://localhost:${PORT}/api/certificates`,
+      chats: `http://localhost:${PORT}/api/chats`,
     },
     ai_features: {
       image_analysis: `http://localhost:${PORT}/api/listings/analyze-images`,
@@ -94,11 +119,12 @@ app.get("/", (req, res) => {
       "AI-Powered Product Analysis",
       "Interactive API Documentation",
       "Real-time Listing Management",
+      "Real-time Chat System",
     ],
   });
 });
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
   console.log(
     `📚 API Documentation available at: http://localhost:${PORT}/api-docs`
@@ -106,5 +132,6 @@ app.listen(PORT, () => {
   console.log(
     `AI Image Analysis available at: http://localhost:${PORT}/api/listings/analyze-images`
   );
+  console.log(`🚀 Socket.IO server ready for real-time chat`);
   connectDB();
 });
