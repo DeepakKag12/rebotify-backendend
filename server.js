@@ -1,4 +1,7 @@
 import express from "express";
+import { createServer } from "http";
+import { Server } from "socket.io";
+import cors from "cors";
 
 //db connection
 import connectDB from "./db/db.js";
@@ -7,54 +10,57 @@ import connectDB from "./db/db.js";
 import userRoutes from "./routes/user.route.js";
 import listingRoutes from "./routes/listing.route.js";
 import certificateRoutes from "./routes/certificate.route.js";
+import chatRoutes from "./routes/chat.route.js";
 
-// Import Swagger configuration
-import { specs, swaggerUi } from "./swagger.js";
+// Import Socket handlers
+import {
+  authenticateSocket,
+  handleConnection,
+} from "./socket/socketHandlers.js";
+
+// Import Swagger configuration and Scalar API Reference
+import { specs } from "./swagger.js";
+import { apiReference } from "@scalar/express-api-reference";
 
 const app = express();
+const server = createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+});
+
 const PORT = process.env.PORT || 3001;
 
 //middleware
 import cookieParser from "cookie-parser";
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Swagger UI setup - This creates the beautiful API documentation interface
+// Socket.IO middleware and connection handling
+io.use(authenticateSocket);
+io.on("connection", handleConnection(io));
+
 app.use(
-  "/api-docs",
-  swaggerUi.serve,
-  swaggerUi.setup(specs, {
-    explorer: true,
-    customCss: `
-    .swagger-ui .topbar { display: none }
-    .swagger-ui .info .title { color: #2d5d7b; font-size: 32px; }
-    .swagger-ui .info .description { font-size: 16px; line-height: 1.6; }
-    .swagger-ui .scheme-container { background: #f8f9fa; padding: 20px; border-radius: 8px; }
-    .swagger-ui .opblock.opblock-post { border-color: #28a745; }
-    .swagger-ui .opblock.opblock-get { border-color: #007bff; }
-    .swagger-ui .opblock.opblock-put { border-color: #ffc107; }
-    .swagger-ui .opblock.opblock-patch { border-color: #fd7e14; }
-    .swagger-ui .opblock.opblock-delete { border-color: #dc3545; }
-  `,
-    customSiteTitle: "Rebot API Documentation",
-    customfavIcon: "/favicon.ico",
-    swaggerOptions: {
-      persistAuthorization: true,
-      displayRequestDuration: true,
-      docExpansion: "none",
-      filter: true,
-      showExtensions: true,
-      showCommonExtensions: true,
-      defaultModelsExpandDepth: 2,
-      defaultModelExpandDepth: 2,
+  "/ref",
+  apiReference({
+    spec: {
+      content: specs,
     },
   })
 );
 
-// Redirect root API docs path to Swagger UI
+// Legacy redirect for old Swagger path
 app.get("/api-docs", (req, res) => {
-  res.redirect("/api-docs/");
+  res.redirect("/ref");
+});
+
+// Also redirect /reference to new /ref path
+app.get("/reference", (req, res) => {
+  res.redirect("/ref");
 });
 
 // Provide API documentation as JSON endpoint
@@ -67,19 +73,22 @@ app.get("/api-docs.json", (req, res) => {
 app.use("/api/users", userRoutes);
 app.use("/api/listings", listingRoutes);
 app.use("/api/certificates", certificateRoutes);
+app.use("/api/chats", chatRoutes);
 
 // Root endpoint with API documentation links
 app.get("/", (req, res) => {
   res.json({
     message: "Welcome to Rebot Backend API",
     documentation: {
-      swagger_ui: `http://localhost:${PORT}/api-docs`,
+      scalar_api: `http://localhost:${PORT}/ref`,
+      legacy_swagger: `http://localhost:${PORT}/api-docs`,
       json_spec: `http://localhost:${PORT}/api-docs.json`,
     },
     api_endpoints: {
       users: `http://localhost:${PORT}/api/users`,
       listings: `http://localhost:${PORT}/api/listings`,
       certificates: `http://localhost:${PORT}/api/certificates`,
+      chats: `http://localhost:${PORT}/api/chats`,
     },
     ai_features: {
       image_analysis: `http://localhost:${PORT}/api/listings/analyze-images`,
@@ -92,19 +101,24 @@ app.get("/", (req, res) => {
       "JWT Authentication",
       "File Upload Support",
       "AI-Powered Product Analysis",
-      "Interactive API Documentation",
+      "Clean API Documentation (Scalar)",
       "Real-time Listing Management",
+      "Real-time Chat System",
     ],
   });
 });
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
   console.log(
-    `📚 API Documentation available at: http://localhost:${PORT}/api-docs`
+    `📚 API Documentation available at: http://localhost:${PORT}/ref`
+  );
+  console.log(
+    `📖 Legacy Swagger UI available at: http://localhost:${PORT}/api-docs`
   );
   console.log(
     `AI Image Analysis available at: http://localhost:${PORT}/api/listings/analyze-images`
   );
+  console.log(`🚀 Socket.IO server ready for real-time chat`);
   connectDB();
 });

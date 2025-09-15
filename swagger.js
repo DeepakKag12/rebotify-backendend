@@ -1,5 +1,4 @@
 import swaggerJSDoc from "swagger-jsdoc";
-import swaggerUi from "swagger-ui-express";
 
 const options = {
   definition: {
@@ -625,6 +624,142 @@ const options = {
             },
           },
         },
+        // Chat Schemas
+        Chat: {
+          type: "object",
+          required: ["participants"],
+          properties: {
+            _id: {
+              type: "string",
+              description: "Chat unique identifier",
+              example: "64f5b8c2e4b0a1b2c3d4e5fa",
+            },
+            participants: {
+              type: "array",
+              items: {
+                type: "string",
+              },
+              description: "Array of participant user IDs",
+              example: ["64f5b8c2e4b0a1b2c3d4e5f6", "64f5b8c2e4b0a1b2c3d4e5f8"],
+            },
+            lastMessage: {
+              type: "string",
+              description: "ID of the last message in this chat",
+              example: "64f5b8c2e4b0a1b2c3d4e5fb",
+            },
+            lastMessageAt: {
+              type: "string",
+              format: "date-time",
+              description: "Timestamp of the last message",
+              example: "2023-12-01T10:30:00Z",
+            },
+            createdAt: {
+              type: "string",
+              format: "date-time",
+              description: "Chat creation timestamp",
+            },
+            updatedAt: {
+              type: "string",
+              format: "date-time",
+              description: "Last update timestamp",
+            },
+          },
+        },
+        Message: {
+          type: "object",
+          required: ["chatId", "sender", "content"],
+          properties: {
+            _id: {
+              type: "string",
+              description: "Message unique identifier",
+              example: "64f5b8c2e4b0a1b2c3d4e5fc",
+            },
+            chatId: {
+              type: "string",
+              description: "ID of the chat this message belongs to",
+              example: "64f5b8c2e4b0a1b2c3d4e5fa",
+            },
+            sender: {
+              type: "string",
+              description: "ID of the user who sent the message",
+              example: "64f5b8c2e4b0a1b2c3d4e5f6",
+            },
+            content: {
+              type: "string",
+              description: "Message content",
+              example: "Hello, is this item still available?",
+            },
+            messageType: {
+              type: "string",
+              enum: ["text", "image", "file"],
+              default: "text",
+              description: "Type of message",
+              example: "text",
+            },
+            readBy: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  user: {
+                    type: "string",
+                    description: "User ID who read the message",
+                  },
+                  readAt: {
+                    type: "string",
+                    format: "date-time",
+                    description: "When the message was read",
+                  },
+                },
+              },
+              description: "Array of users who have read this message",
+            },
+            createdAt: {
+              type: "string",
+              format: "date-time",
+              description: "Message creation timestamp",
+            },
+            updatedAt: {
+              type: "string",
+              format: "date-time",
+              description: "Last update timestamp",
+            },
+          },
+        },
+        ChatCreate: {
+          type: "object",
+          required: ["participants"],
+          properties: {
+            participants: {
+              type: "array",
+              items: {
+                type: "string",
+              },
+              minItems: 2,
+              maxItems: 2,
+              description: "Array of participant user IDs (exactly 2 users)",
+              example: ["64f5b8c2e4b0a1b2c3d4e5f6", "64f5b8c2e4b0a1b2c3d4e5f8"],
+            },
+          },
+        },
+        MessageCreate: {
+          type: "object",
+          required: ["content"],
+          properties: {
+            content: {
+              type: "string",
+              description: "Message content",
+              example: "Hello, is this item still available?",
+            },
+            messageType: {
+              type: "string",
+              enum: ["text", "image", "file"],
+              default: "text",
+              description: "Type of message",
+              example: "text",
+            },
+          },
+        },
         // Response Schemas
         ApiResponse: {
           type: "object",
@@ -753,6 +888,10 @@ const options = {
         description: "Product listing management",
       },
       {
+        name: "Chats",
+        description: "Real-time chat system for buyers and sellers",
+      },
+      {
         name: "Certificates",
         description: "Certificate management for recyclers",
       },
@@ -762,9 +901,9 @@ const options = {
       },
     ],
   },
-  apis: ["./routes/*.js", "./controllers/*.js", "./models/*.js"],
+  apis: ["./docs/api/*.js"],
 };
 
 const specs = swaggerJSDoc(options);
 
-export { specs, swaggerUi };
+export { specs };
