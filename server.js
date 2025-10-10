@@ -11,7 +11,7 @@ import userRoutes from "./routes/user.route.js";
 import listingRoutes from "./routes/listing.route.js";
 import certificateRoutes from "./routes/certificate.route.js";
 import chatRoutes from "./routes/chat.route.js";
-
+import deliveryRoutes from "./routes/delivery.route.js";
 // Import Socket handlers
 import {
   authenticateSocket,
@@ -74,7 +74,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/listings", listingRoutes);
 app.use("/api/certificates", certificateRoutes);
 app.use("/api/chats", chatRoutes);
-
+app.use("/api/deliveries", deliveryRoutes);
 // Root endpoint with API documentation links
 app.get("/", (req, res) => {
   res.json({

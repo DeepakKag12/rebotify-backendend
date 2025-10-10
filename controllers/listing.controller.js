@@ -5,7 +5,7 @@ import {
   validateAndEnhanceAnalysis,
 } from "../services/claudeService.js";
 import fs from "fs/promises";
-
+import Delivery from "../models/delivery.model.js";
 // AI-powered image analysis endpoint
 export const analyzeProductImagesEndpoint = async (req, res) => {
   try {
@@ -242,6 +242,16 @@ function getPricingGuidance(priceRange) {
 
   return `AI suggests ${currency} ${min} - ${max} based on visible condition and market comparison.`;
 }
+
+//create a random tracking number based on time and date and rebot
+function createTrackingNumber() {
+  const timestamp = Date.now().toString(36).toUpperCase();
+  const randomSegment = Math.random()
+    .toString(36)
+    .substring(2, 6)
+    .toUpperCase();
+  return `REBOT-${timestamp}-${randomSegment}`;
+}
 // Create a new listing
 export const createListing = async (req, res) => {
   try {
@@ -408,6 +418,22 @@ export const updateListingStatus = async (req, res) => {
     }
     listing.status_update_by = userId;
 
+    // If status is being changed to "closed", create a Delivery document
+    if (status === "closed") {
+      //trackNumber
+      const trackingNumber = createTrackingNumber();
+      listing.tracking_number = trackingNumber;
+      // Create a new Delivery document when the listing is closed
+      const newDelivery = new Delivery({
+        orderId: listing._id,
+        deliveryDate: new Date(), // Set to current date, can be updated later
+        status_delivery: "pending", // Initial status
+        sellerId: listing.seller,
+        buyerId: listing.buyer,
+        trackingNumber: trackingNumber,
+      });
+      await newDelivery.save();
+    }
     listing.status = status;
     await listing.save();
     res
@@ -463,41 +489,6 @@ export const getListingsBySellerAndStatus = async (req, res) => {
     });
   } catch (error) {
     console.log("Error in getListingsBySellerAndStatus:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-};
-
-//Once the listing is closed we have the address of the buyer as well as the seller so we can show the address of both the buyer and the seller to the delivery guy
-export const getListingDetailsForDelivery = async (req, res) => {
-  try {
-    //first we need to get all the listing with close status
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
-    if (!req.user) {
-      return res.status(401).json({ message: "Unauthorized " });
-    }
-    const deliveryGuyId = req.user.id;
-    //find all the listing with closed status
-    const listings = await Listing.find({ status: "closed" })
-      .populate("seller", "name email phone address") //populate seller details
-      .populate("buyer", "name email phone address") //populate buyer details
-      .skip(skip)
-      .limit(limit)
-      .exec();
-
-    const totalListings = await Listing.countDocuments({
-      status: "closed",
-    }).exec();
-    const totalPages = Math.ceil(totalListings / limit);
-    res.status(200).json({
-      page,
-      totalPages,
-      totalListings,
-      listings,
-    });
-  } catch (error) {
-    console.log("Error in getListingDetailsForDelivery:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
