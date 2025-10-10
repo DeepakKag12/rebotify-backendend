@@ -4,22 +4,29 @@ const deliverySchema = new mongoose.Schema(
   {
     orderId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Order",
+      ref: "Listing",
       required: true,
     },
     deliveryDate: {
       type: Date,
       required: true,
     },
-    status: {
+    sellerId:{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    buyerId:{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    status_delivery: {
       type: String,
-      enum: ["pending", "shipped", "delivered", "canceled"],
+      enum: ["pending", "shipped", "outForDelivery", "Delivered", "canceled"],
       default: "pending",
     },
     trackingNumber: {
-      type: String,
-    },
-    carrier: {
       type: String,
     },
     createdAt: {
