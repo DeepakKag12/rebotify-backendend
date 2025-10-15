@@ -258,23 +258,28 @@ export const createListing = async (req, res) => {
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized " });
     }
+
+    // Debug: Log the received data
+    console.log("Received req.body:", req.body);
+    console.log("Received req.files:", req.files);
+
     const {
-      "product-category": productCategory,
+      productCategory, // Changed from "product-category": productCategory
       brand,
       model,
-      "manufacture-year": manufactureYear,
+      manufacture_year: manufactureYear, // Changed from "manufacture-year": manufactureYear
       condition,
       description,
       accessories,
       battery,
-      "video-link": videoLink,
+      video_link: videoLink, // Changed from "video-link": videoLink
       price,
-      "price-type": priceType,
+      price_type: priceType, // Changed from "price-type": priceType
       delivery,
       name,
       email,
       phone,
-      "contact-preference": contactPreference,
+      contact_preference: contactPreference, // Changed from "contact-preference": contactPreference
       location,
       address,
     } = req.body;
@@ -309,19 +314,30 @@ export const createListing = async (req, res) => {
       : delivery || "";
 
     // Basic validation for required fields
-    if (
-      !productCategory ||
-      !brand ||
-      !model ||
-      !condition ||
-      !description ||
-      !price ||
-      !name ||
-      !email ||
-      !phone ||
-      !location
-    ) {
-      return res.status(400).json({ error: "Missing required fields." });
+    const requiredFields = {
+      productCategory,
+      brand,
+      model,
+      condition,
+      description,
+      price,
+      name,
+      email,
+      phone,
+      location,
+    };
+
+    const missingFields = Object.entries(requiredFields)
+      .filter(([key, value]) => !value)
+      .map(([key]) => key);
+
+    if (missingFields.length > 0) {
+      console.log("Missing fields:", missingFields);
+      return res.status(400).json({
+        error: "Missing required fields",
+        missingFields: missingFields,
+        receivedData: Object.keys(req.body),
+      });
     }
 
     // Create a new Listing document using the Mongoose model
@@ -412,7 +428,7 @@ export const updateListingStatus = async (req, res) => {
 
     const lastUpdatedBy = listing.status_update_by;
     const lastStatus = listing.status;
-    //if last status is pending and how the new one is closed then what we will do is we can make the the guy who make the status pending as the buyer
+    //if last status is pending and now the new one is closed then what we will do is we can make the the guy who make the status pending as the buyer
     if (lastUpdatedBy && lastStatus === "pending" && status === "closed") {
       listing.buyer = lastUpdatedBy;
     }
@@ -444,7 +460,6 @@ export const updateListingStatus = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
 //delete the listing
 export const deleteListing = async (req, res) => {
   try {

@@ -1,6 +1,6 @@
 /**
  * @swagger
- * /api/certificates:
+ * /api/certificates/upload:
  *   post:
  *     tags: [Certificates]
  *     summary: Upload certificate

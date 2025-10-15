@@ -21,5 +21,7 @@ router.delete("/:id", authenticateToken, deleteUser);
 router.get("/total/retention", authenticateToken, getUserRetentionRate);
 router.put("/profile/:id", authenticateToken, updateUserProfile);
 router.delete("/soft-delete/admin/:id", authenticateToken, adminDeleteUser);
-
+router.post("/logout", authenticateToken, logout);
+router.get("/total/active", authenticateToken, getActiveUserCount);
+router.get("/:id", authenticateToken, getUserById);
 export default router;

@@ -12,6 +12,7 @@ import listingRoutes from "./routes/listing.route.js";
 import certificateRoutes from "./routes/certificate.route.js";
 import chatRoutes from "./routes/chat.route.js";
 import deliveryRoutes from "./routes/delivery.route.js";
+import bidRoutes from "./routes/bid.route.js";
 // Import Socket handlers
 import {
   authenticateSocket,
@@ -75,6 +76,7 @@ app.use("/api/listings", listingRoutes);
 app.use("/api/certificates", certificateRoutes);
 app.use("/api/chats", chatRoutes);
 app.use("/api/deliveries", deliveryRoutes);
+app.use("/api/bids", bidRoutes);
 // Root endpoint with API documentation links
 app.get("/", (req, res) => {
   res.json({
@@ -89,6 +91,8 @@ app.get("/", (req, res) => {
       listings: `http://localhost:${PORT}/api/listings`,
       certificates: `http://localhost:${PORT}/api/certificates`,
       chats: `http://localhost:${PORT}/api/chats`,
+      deliveries: `http://localhost:${PORT}/api/deliveries`,
+      bids: `http://localhost:${PORT}/api/bids`,
     },
     ai_features: {
       image_analysis: `http://localhost:${PORT}/api/listings/analyze-images`,

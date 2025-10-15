@@ -1,6 +1,6 @@
 /**
  * @swagger
- * /api/listings:
+ * /api/listings/create:
  *   post:
  *     tags: [Listings]
  *     summary: Create a new listing
@@ -11,7 +11,7 @@
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             $ref: '#/components/schemas/ListingCreate'
  *     responses:
@@ -35,11 +35,14 @@
 
 /**
  * @swagger
- * /api/listings:
+ * /api/listings/all:
  *   get:
  *     tags: [Listings]
  *     summary: Get all listings
- *     description: Retrieve all active listings with pagination
+ *     description: Retrieve all active listings with pagination and filters
+ *     security:
+ *       - BearerAuth: []
+ *       - CookieAuth: []
  *     parameters:
  *       - name: page
  *         in: query
@@ -56,6 +59,12 @@
  *           minimum: 1
  *           maximum: 100
  *           default: 10
+ *       - name: status
+ *         in: query
+ *         description: Filter by listing status
+ *         schema:
+ *           type: string
+ *           enum: [open, pending, closed]
  *       - name: category
  *         in: query
  *         description: Filter by product category
@@ -73,6 +82,8 @@
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/PaginatedResponse'
+ *       401:
+ *         description: Unauthorized
  */
 
 /**
@@ -240,6 +251,67 @@
  *                   description: Listing suggestions
  *       400:
  *         description: Invalid images
+ *       401:
+ *         description: Unauthorized
+ */
+
+/**
+ * @swagger
+ * /api/listings/{id}:
+ *   delete:
+ *     tags: [Listings]
+ *     summary: Delete a listing
+ *     description: Delete a specific listing (seller only)
+ *     security:
+ *       - BearerAuth: []
+ *       - CookieAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: Listing ID
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Listing deleted successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - not the owner
+ *       404:
+ *         description: Listing not found
+ */
+
+/**
+ * @swagger
+ * /api/listings/seller:
+ *   get:
+ *     tags: [Listings]
+ *     summary: Get seller's listings
+ *     description: Get all listings created by the authenticated seller with optional status filter
+ *     security:
+ *       - BearerAuth: []
+ *       - CookieAuth: []
+ *     parameters:
+ *       - name: status
+ *         in: query
+ *         description: Filter by listing status
+ *         schema:
+ *           type: string
+ *           enum: [open, pending, closed]
+ *     responses:
+ *       200:
+ *         description: Seller's listings retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 listings:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Listing'
  *       401:
  *         description: Unauthorized
  */
