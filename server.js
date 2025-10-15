@@ -83,7 +83,15 @@ app.use(
     },
   })
 );
-
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    console.error("Database connection error:", error);
+    res.status(500).json({ error: "Database connection failed" });
+  }
+});
 // Legacy redirect for old Swagger path
 app.get("/api-docs", (req, res) => {
   res.redirect("/ref");
@@ -120,12 +128,10 @@ app.get("/", (req, res) => {
   });
 });
 
-server.listen(PORT, async () => {
+server.listen(PORT, () => {
   console.log(`Server is running on :${PORT}`);
   console.log(` API Documentation available at: ${process.env.BASE_URL}/ref`);
   console.log(
     `Legacy Swagger UI available at: ${process.env.BASE_URL}/api-docs`
   );
-
-  await connectDB();
 });
