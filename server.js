@@ -75,6 +75,12 @@ app.use(
     spec: {
       content: specs,
     },
+    metaData: {
+      title: "Rebot Backend API Documentation",
+    },
+    configuration: {
+      theme: "default",
+    },
   })
 );
 
