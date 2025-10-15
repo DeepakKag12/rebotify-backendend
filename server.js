@@ -120,12 +120,12 @@ app.get("/", (req, res) => {
   });
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`Server is running on :${PORT}`);
   console.log(` API Documentation available at: ${process.env.BASE_URL}/ref`);
   console.log(
     `Legacy Swagger UI available at: ${process.env.BASE_URL}/api-docs`
   );
 
-  connectDB();
+  await connectDB();
 });
