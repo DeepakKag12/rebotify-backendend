@@ -1,8 +1,8 @@
 // Build script to generate swagger specification for production
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import swaggerJSDoc from 'swagger-jsdoc';
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import swaggerJSDoc from "swagger-jsdoc";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -362,10 +362,10 @@ const options = {
 const specs = swaggerJSDoc(options);
 
 // Write the specification to a JSON file
-const outputPath = path.join(__dirname, 'swagger-spec.json');
+const outputPath = path.join(__dirname, "swagger-spec.json");
 fs.writeFileSync(outputPath, JSON.stringify(specs, null, 2));
 
 console.log(`✅ Swagger specification generated successfully!`);
 console.log(`📄 Output: ${outputPath}`);
 console.log(`📊 Paths found: ${Object.keys(specs.paths || {}).length}`);
-console.log(`🏷️  Tags: ${specs.tags.map(t => t.name).join(', ')}`);
+console.log(`🏷️  Tags: ${specs.tags.map((t) => t.name).join(", ")}`);
