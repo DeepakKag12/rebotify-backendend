@@ -19,11 +19,11 @@ const options = {
     },
     servers: [
       {
-        url: "http://localhost:3001",
+        url: "http://localhost:3005",
         description: "Development server",
       },
       {
-        url: "https://api.rebot.com",
+        url: "https://rebootify.aadi01.me/",
         description: "Production server",
       },
     ],

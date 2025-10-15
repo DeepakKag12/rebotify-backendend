@@ -281,3 +281,75 @@
  *       403:
  *         description: Forbidden - Admin access required
  */
+
+/**
+ * @swagger
+ * /api/users/profile/{id}:
+ *   put:
+ *     tags: [Users]
+ *     summary: Update user profile
+ *     description: Update authenticated user's profile information
+ *     security:
+ *       - BearerAuth: []
+ *       - CookieAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: User ID
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               address:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ *       400:
+ *         description: Invalid input
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: User not found
+ */
+
+/**
+ * @swagger
+ * /api/users/soft-delete/admin/{id}:
+ *   delete:
+ *     tags: [Admin]
+ *     summary: Admin soft delete user
+ *     description: Soft delete a user (Admin only)
+ *     security:
+ *       - BearerAuth: []
+ *       - CookieAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: User ID to soft delete
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: User soft deleted successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin access required
+ *       404:
+ *         description: User not found
+ */
