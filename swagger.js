@@ -907,12 +907,28 @@ const options = {
         description: "Certificate management for recyclers",
       },
       {
+        name: "Bids",
+        description: "Auction bidding system for product listings",
+      },
+      {
+        name: "Deliveries",
+        description: "Delivery management and tracking",
+      },
+      {
         name: "Analytics",
         description: "Platform analytics and statistics",
       },
     ],
   },
-  apis: ["./docs/api/*.js"],
+  // Use explicit file paths for better compatibility with Vercel
+  apis: [
+    "./docs/api/users.js",
+    "./docs/api/listings.js",
+    "./docs/api/certificates.js",
+    "./docs/api/chats.js",
+    "./docs/api/bids.js",
+    "./docs/api/deliveries.js",
+  ],
 };
 
 const specs = swaggerJSDoc(options);
