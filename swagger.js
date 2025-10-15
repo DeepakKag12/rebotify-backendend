@@ -1,5 +1,25 @@
 import swaggerJSDoc from "swagger-jsdoc";
 
+// Generate server URLs based on environment
+const generateServers = () => {
+  const servers = [
+    {
+      url: "http://localhost:3005",
+      description: "Development server",
+    },
+  ];
+
+  // Add production server if in production environment
+  if (process.env.NODE_ENV === "production") {
+    servers.push({
+      url: "https://rebootify.aadi01.me",
+      description: "Production server",
+    });
+  }
+
+  return servers;
+};
+
 const options = {
   definition: {
     openapi: "3.0.0",
@@ -17,16 +37,7 @@ const options = {
         url: "https://opensource.org/licenses/MIT",
       },
     },
-    servers: [
-      {
-        url: "http://localhost:3005",
-        description: "Development server",
-      },
-      {
-        url: "https://rebootify.aadi01.me/",
-        description: "Production server",
-      },
-    ],
+    servers: generateServers(),
     components: {
       securitySchemes: {
         BearerAuth: {

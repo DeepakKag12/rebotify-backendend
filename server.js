@@ -27,8 +27,16 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin:
+      process.env.NODE_ENV === "production"
+        ? ["https://rebootify.aadi01.me", "https://www.rebootify.aadi01.me"]
+        : [
+            "http://localhost:3000",
+            "http://localhost:3001",
+            "http://localhost:3005",
+          ],
     methods: ["GET", "POST"],
+    credentials: true,
   },
 });
 
@@ -36,7 +44,23 @@ const PORT = process.env.PORT || 3001;
 
 //middleware
 import cookieParser from "cookie-parser";
-app.use(cors());
+
+// Configure CORS based on environment
+const corsOptions = {
+  origin:
+    process.env.NODE_ENV === "production"
+      ? ["https://rebootify.aadi01.me", "https://www.rebootify.aadi01.me"]
+      : [
+          "http://localhost:3000",
+          "http://localhost:3001",
+          "http://localhost:3005",
+        ],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -82,47 +106,20 @@ app.get("/", (req, res) => {
   res.json({
     message: "Welcome to Rebot Backend API",
     documentation: {
-      scalar_api: `http://localhost:${PORT}/ref`,
-      legacy_swagger: `http://localhost:${PORT}/api-docs`,
-      json_spec: `http://localhost:${PORT}/api-docs.json`,
+      scalar_api: `${process.env.BASE_URL}/ref`,
     },
-    api_endpoints: {
-      users: `http://localhost:${PORT}/api/users`,
-      listings: `http://localhost:${PORT}/api/listings`,
-      certificates: `http://localhost:${PORT}/api/certificates`,
-      chats: `http://localhost:${PORT}/api/chats`,
-      deliveries: `http://localhost:${PORT}/api/deliveries`,
-      bids: `http://localhost:${PORT}/api/bids`,
-    },
-    ai_features: {
-      image_analysis: `http://localhost:${PORT}/api/listings/analyze-images`,
-      description:
-        "Upload product images to get AI-powered listing suggestions",
-    },
+
     version: "1.0.0",
     status: "active",
-    features: [
-      "JWT Authentication",
-      "File Upload Support",
-      "AI-Powered Product Analysis",
-      "Clean API Documentation (Scalar)",
-      "Real-time Listing Management",
-      "Real-time Chat System",
-    ],
   });
 });
 
 server.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`Server is running on :${PORT}`);
+  console.log(` API Documentation available at: ${process.env.BASE_URL}/ref`);
   console.log(
-    `📚 API Documentation available at: http://localhost:${PORT}/ref`
+    `Legacy Swagger UI available at: ${process.env.BASE_URL}/api-docs`
   );
-  console.log(
-    `📖 Legacy Swagger UI available at: http://localhost:${PORT}/api-docs`
-  );
-  console.log(
-    `AI Image Analysis available at: http://localhost:${PORT}/api/listings/analyze-images`
-  );
-  console.log(`🚀 Socket.IO server ready for real-time chat`);
+
   connectDB();
 });
