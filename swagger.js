@@ -1,6 +1,6 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import swaggerJSDoc from "swagger-jsdoc";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -9,23 +9,29 @@ const __dirname = path.dirname(__filename);
 // Try to load pre-built swagger specification for production
 let specs;
 try {
-  const specPath = path.join(__dirname, 'swagger-spec.json');
-  const specContent = fs.readFileSync(specPath, 'utf8');
+  const specPath = path.join(__dirname, "swagger-spec.json");
+  const specContent = fs.readFileSync(specPath, "utf8");
   specs = JSON.parse(specContent);
-  
+
   // Update server URLs based on current environment
-  specs.servers = specs.servers.filter(server => {
-    if (process.env.NODE_ENV === 'production') {
-      return server.url.includes('rebootify.aadi01.me');
+  specs.servers = specs.servers.filter((server) => {
+    if (process.env.NODE_ENV === "production") {
+      return server.url.includes("rebootify.aadi01.me");
     } else {
-      return server.url.includes('localhost');
+      return server.url.includes("localhost");
     }
   });
-  
-  console.log('✅ Loaded pre-built swagger specification with', Object.keys(specs.paths || {}).length, 'paths');
+
+  console.log(
+    "✅ Loaded pre-built swagger specification with",
+    Object.keys(specs.paths || {}).length,
+    "paths"
+  );
 } catch (error) {
-  console.error('❌ Failed to load pre-built swagger specification, falling back to dynamic generation');
-  
+  console.error(
+    "❌ Failed to load pre-built swagger specification, falling back to dynamic generation"
+  );
+
   // Fallback to dynamic generation for development
   const generateServers = () => {
     const servers = [
