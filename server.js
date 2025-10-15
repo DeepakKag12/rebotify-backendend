@@ -4,7 +4,7 @@ import { Server } from "socket.io";
 import cors from "cors";
 
 //db connection
-import connectDB from "./db/db.js";
+import { connectDB } from "./db/db.js";
 
 //import routes
 import userRoutes from "./routes/user.route.js";
