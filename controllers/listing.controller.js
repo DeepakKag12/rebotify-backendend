@@ -474,7 +474,7 @@ export const getListingsBySellerAndStatus = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
-    const status = req.query.status;
+    const status = "open";
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized " });
     }
@@ -497,6 +497,131 @@ export const getListingsBySellerAndStatus = async (req, res) => {
     });
   } catch (error) {
     console.log("Error in getListingsBySellerAndStatus:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Get single listing by ID
+export const getListingById = async (req, res) => {
+  try {
+    const listingId = req.params.id;
+
+    const listing = await Listing.findById(listingId).exec();
+
+    if (!listing) {
+      return res.status(404).json({ message: "Listing not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      listing,
+    });
+  } catch (error) {
+    console.log("Error in getListingById:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Update listing by ID
+export const updateListing = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const listingId = req.params.id;
+    const listing = await Listing.findById(listingId);
+
+    if (!listing) {
+      return res.status(404).json({ message: "Listing not found" });
+    }
+
+    // Check if user owns this listing
+    if (listing.seller.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Not authorized to update this listing" });
+    }
+
+    const {
+      productCategory,
+      brand,
+      model,
+      manufacture_year: manufactureYear,
+      condition,
+      description,
+      accessories,
+      battery,
+      video_link: videoLink,
+      price,
+      price_type: priceType,
+      delivery,
+      name,
+      email,
+      phone,
+      contact_preference: contactPreference,
+      location,
+      address,
+    } = req.body;
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (email && !emailRegex.test(email)) {
+      return res.status(400).json({ error: "Invalid email format." });
+    }
+
+    // Validate phone number format
+    const phoneRegex =
+      /^(\+\d{1,3}[\s.-]?)?\(?\d{1,4}\)?[\s.-]?\d{1,4}[\s.-]?\d{1,9}$/;
+    if (phone && !phoneRegex.test(phone)) {
+      return res.status(400).json({ error: "Invalid phone number format." });
+    }
+
+    // Process new uploaded files if any
+    let imagePaths = listing.image_paths; // Keep existing images by default
+    if (req.files && Array.isArray(req.files) && req.files.length > 0) {
+      // If new images are uploaded, replace old ones
+      imagePaths = req.files.map((file) => `uploads/${file.filename}`);
+      
+      // Optional: Delete old image files from filesystem
+      // This requires fs module and proper error handling
+    }
+
+    // Convert arrays to comma-separated strings
+    const accessoriesStr = Array.isArray(accessories)
+      ? accessories.join(", ")
+      : accessories || listing.accessories;
+    const deliveryOptionsStr = Array.isArray(delivery)
+      ? delivery.join(", ")
+      : delivery || listing.delivery_options;
+
+    // Update listing fields
+    listing.product_category = productCategory || listing.product_category;
+    listing.brand = brand || listing.brand;
+    listing.model = model || listing.model;
+    listing.manufacture_year = manufactureYear || listing.manufacture_year;
+    listing.condition = condition || listing.condition;
+    listing.description = description || listing.description;
+    listing.accessories = accessoriesStr;
+    listing.battery = battery !== undefined ? battery : listing.battery;
+    listing.video_link = videoLink !== undefined ? videoLink : listing.video_link;
+    listing.price = price || listing.price;
+    listing.price_type = priceType || listing.price_type;
+    listing.delivery_options = deliveryOptionsStr;
+    listing.image_paths = imagePaths;
+    listing.name = name || listing.name;
+    listing.email = email || listing.email;
+    listing.phone = phone || listing.phone;
+    listing.contact_preference = contactPreference || listing.contact_preference;
+    listing.location = location || listing.location;
+    listing.address = address || listing.address;
+
+    await listing.save();
+
+    res.status(200).json({
+      message: "Listing updated successfully",
+      listing,
+    });
+  } catch (error) {
+    console.log("Error in updateListing:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };

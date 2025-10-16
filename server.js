@@ -66,6 +66,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// Serve static files from uploads directory
+app.use("/uploads", express.static("uploads"));
+
 // Socket.IO middleware and connection handling
 io.use(authenticateSocket);
 io.on("connection", handleConnection(io));
