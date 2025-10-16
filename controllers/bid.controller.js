@@ -259,8 +259,6 @@ export const selectBuyer = async (req, res) => {
     // Update the listing status as well
     const listing = await Listing.findById(bidDoc.listing._id);
     if (listing) {
-      listing.status = "pending"; // Or "sold" based on your business logic
-      listing.buyer = bidderId;
       listing.status_update_by = sellerId;
       await listing.save();
     }
