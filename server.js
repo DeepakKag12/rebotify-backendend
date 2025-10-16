@@ -31,7 +31,7 @@ const io = new Server(server, {
       process.env.NODE_ENV === "production"
         ? ["https://rebootify.aadi01.me", "https://www.rebootify.aadi01.me"]
         : [
-            "http://localhost:3000",
+            "http://localhost:5173",
             "http://localhost:3001",
             "http://localhost:3005",
           ],
@@ -54,6 +54,7 @@ const corsOptions = {
           "http://localhost:3000",
           "http://localhost:3001",
           "http://localhost:3005",
+          "http://localhost:5173",
         ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
@@ -86,6 +87,7 @@ app.use(
 app.use(async (req, res, next) => {
   try {
     await connectDB();
+    console.log("Database connected successfully");
     next();
   } catch (error) {
     console.error("Database connection error:", error);
