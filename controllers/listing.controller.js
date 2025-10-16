@@ -417,7 +417,7 @@ export const updateListingStatus = async (req, res) => {
     if (!status) {
       return res.status(400).json({ message: "Status is required" });
     }
-    const ValidatedStatuses = ["open", "pending", "closed"];
+    const ValidatedStatuses = ["open", "closed"];
     if (!ValidatedStatuses.includes(status)) {
       return res.status(400).json({ message: "Invalid status value" });
     }
@@ -428,13 +428,6 @@ export const updateListingStatus = async (req, res) => {
 
     const lastUpdatedBy = listing.status_update_by;
     const lastStatus = listing.status;
-    //if last status is pending and now the new one is closed then what we will do is we can make the the guy who make the status pending as the buyer
-    if (lastUpdatedBy && lastStatus === "pending" && status === "closed") {
-      listing.buyer = lastUpdatedBy;
-    }
-    listing.status_update_by = userId;
-
-    // If status is being changed to "closed", create a Delivery document
     if (status === "closed") {
       //trackNumber
       const trackingNumber = createTrackingNumber();

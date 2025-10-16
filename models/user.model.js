@@ -21,21 +21,15 @@ const userSchema = new mongoose.Schema(
       default: "user",
       enum: ["user", "admin", "recycler", "delivery"],
     },
-    address: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    location: {
-      latitude: {
-        type: Number,
-        required: false,
+    addresses: [
+      {
+        address: {
+          type: String,
+          required: true,
+          trim: true,
+        },
       },
-      longitude: {
-        type: Number,
-        required: false,
-      },
-    },
+    ],
     lasLogin: {
       type: Date,
       default: Date.now,

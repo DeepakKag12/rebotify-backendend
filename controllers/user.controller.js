@@ -1,21 +1,27 @@
 import User from "../models/user.model.js";
 import { generateToken } from "../utils/jwt.js";
 import RemovedUser from "../models/removed.model.js";
-import { getCoordinatesFromAddress } from "../utils/locationUtils.js";
+
 
 // User Registration
 export const signup = async (req, res) => {
   try {
-    const { name, email, password, userType, address } = req.body;
+    //we also have to change the address filed here as array of addresses
+    const { name, email, password, userType, addresses } = req.body;
 
     // Check if any required field is missing
-    if (!name || !email || !password || !userType || !address) {
-      return res
-        .status(400)
-        .json({
-          message:
-            "Please provide all required fields (name, email, password, userType, address)",
-        });
+    if (
+      !name ||
+      !email ||
+      !password ||
+      !userType ||
+      !addresses ||
+      addresses.length === 0
+    ) {
+      return res.status(400).json({
+        message:
+          "Please provide all required fields (name, email, password, userType, address)",
+      });
     }
 
     // Validate email format
@@ -33,27 +39,13 @@ export const signup = async (req, res) => {
         .status(400)
         .json({ message: "User with this email already exists" });
     }
-
-    // Get coordinates from address
-    const locationData = await getCoordinatesFromAddress(address);
-
-    if (locationData.error) {
-      return res.status(400).json({
-        message: `Location error: ${locationData.error}`,
-      });
-    }
-
     // Create new user with address and coordinates
     const newUser = new User({
       name,
       email,
       password,
       userType,
-      address: locationData.address,
-      location: {
-        latitude: locationData.location.latitude,
-        longitude: locationData.location.longitude,
-      },
+      addresses,
     });
 
     await newUser.save();
@@ -65,11 +57,7 @@ export const signup = async (req, res) => {
         name: newUser.name,
         email: newUser.email,
         userType: newUser.userType,
-        address: newUser.address,
-        location: {
-          latitude: newUser.location.latitude,
-          longitude: newUser.location.longitude,
-        },
+        addresses: newUser.addresses,
       },
     });
   } catch (error) {
@@ -321,3 +309,5 @@ export const adminDeleteUser = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+//add the address field if user want cause we have make it array of addresses
