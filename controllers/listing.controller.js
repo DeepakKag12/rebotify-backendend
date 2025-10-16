@@ -538,7 +538,9 @@ export const updateListing = async (req, res) => {
 
     // Check if user owns this listing
     if (listing.seller.toString() !== req.user.id) {
-      return res.status(403).json({ message: "Not authorized to update this listing" });
+      return res
+        .status(403)
+        .json({ message: "Not authorized to update this listing" });
     }
 
     const {
@@ -580,7 +582,7 @@ export const updateListing = async (req, res) => {
     if (req.files && Array.isArray(req.files) && req.files.length > 0) {
       // If new images are uploaded, replace old ones
       imagePaths = req.files.map((file) => `uploads/${file.filename}`);
-      
+
       // Optional: Delete old image files from filesystem
       // This requires fs module and proper error handling
     }
@@ -602,7 +604,8 @@ export const updateListing = async (req, res) => {
     listing.description = description || listing.description;
     listing.accessories = accessoriesStr;
     listing.battery = battery !== undefined ? battery : listing.battery;
-    listing.video_link = videoLink !== undefined ? videoLink : listing.video_link;
+    listing.video_link =
+      videoLink !== undefined ? videoLink : listing.video_link;
     listing.price = price || listing.price;
     listing.price_type = priceType || listing.price_type;
     listing.delivery_options = deliveryOptionsStr;
@@ -610,7 +613,8 @@ export const updateListing = async (req, res) => {
     listing.name = name || listing.name;
     listing.email = email || listing.email;
     listing.phone = phone || listing.phone;
-    listing.contact_preference = contactPreference || listing.contact_preference;
+    listing.contact_preference =
+      contactPreference || listing.contact_preference;
     listing.location = location || listing.location;
     listing.address = address || listing.address;
 
