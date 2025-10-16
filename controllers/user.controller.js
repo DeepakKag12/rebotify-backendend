@@ -2,7 +2,6 @@ import User from "../models/user.model.js";
 import { generateToken } from "../utils/jwt.js";
 import RemovedUser from "../models/removed.model.js";
 
-
 // User Registration
 export const signup = async (req, res) => {
   try {
@@ -120,6 +119,7 @@ export const login = async (req, res) => {
         name: user.name,
         email: user.email,
         userType: user.userType,
+        addresses: user.addresses,
       },
     });
   } catch (error) {

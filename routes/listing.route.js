@@ -5,6 +5,8 @@ import {
   deleteListing,
   getListingsBySellerAndStatus,
   analyzeProductImagesEndpoint,
+  getListingById,
+  updateListing,
 } from "../controllers/listing.controller.js";
 import { authenticateToken } from "../middleware/authenticateToken.js";
 import uploadImage from "../middleware/uploadImage.js";
@@ -20,7 +22,9 @@ router.post(
 );
 router.post("/create", authenticateToken, uploadImage, createListing);
 router.get("/all", authenticateToken, getAllStatusBasedListings);
+router.get("/seller", authenticateToken, getListingsBySellerAndStatus);
+router.get("/:id", authenticateToken, getListingById);
+router.put("/:id", authenticateToken, uploadImage, updateListing);
 router.patch("/status/:id", authenticateToken, updateListingStatus);
 router.delete("/:id", authenticateToken, deleteListing);
-router.get("/seller", authenticateToken, getListingsBySellerAndStatus);
 export default router;
