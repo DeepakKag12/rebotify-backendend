@@ -29,7 +29,11 @@ const io = new Server(server, {
   cors: {
     origin:
       process.env.NODE_ENV === "production"
-        ? ["https://rebootify.aadi01.me", "https://www.rebootify.aadi01.me"]
+        ? [
+            "https://rebootify.aadi01.me",
+            "https://www.rebootify.aadi01.me",
+            "https://rebot-frontend.vercel.app",
+          ]
         : [
             "http://localhost:5173",
             "http://localhost:3001",
@@ -49,7 +53,11 @@ import cookieParser from "cookie-parser";
 const corsOptions = {
   origin:
     process.env.NODE_ENV === "production"
-      ? ["https://rebootify.aadi01.me", "https://www.rebootify.aadi01.me"]
+      ? [
+          "https://rebootify.aadi01.me",
+          "https://www.rebootify.aadi01.me",
+          "https://rebot-frontend.vercel.app",
+        ]
       : [
           "http://localhost:3000",
           "http://localhost:3001",
