@@ -9,6 +9,7 @@ import {
   getUserRetentionRate,
   updateUserProfile,
   adminDeleteUser,
+  updateUserAddress,
 } from "../controllers/user.controller.js";
 import { authenticateToken } from "../middleware/authenticateToken.js";
 import express from "express";
@@ -24,4 +25,5 @@ router.delete("/soft-delete/admin/:id", authenticateToken, adminDeleteUser);
 router.post("/logout", authenticateToken, logout);
 router.get("/total/active", authenticateToken, getActiveUserCount);
 router.get("/:id", authenticateToken, getUserById);
+router.put("/address/:id", authenticateToken, updateUserAddress);
 export default router;

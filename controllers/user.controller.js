@@ -311,3 +311,32 @@ export const adminDeleteUser = async (req, res) => {
 };
 
 //add the address field if user want cause we have make it array of addresses
+export const updateUserAddress = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { address } = req.body;
+
+    if (!address) {
+      return res
+        .status(400)
+        .json({ message: "Please provide an address to add" });
+    }
+
+    const user = await User.findById(userId).exec();
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Add new address to addresses array with correct structure
+    user.addresses.push({ address: address });
+    await user.save();
+
+    res.status(200).json({
+      message: "Address added successfully",
+      addresses: user.addresses,
+    });
+  } catch (error) {
+    console.log("Error in updateUserAddress:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
