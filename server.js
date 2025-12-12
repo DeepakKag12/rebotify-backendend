@@ -27,8 +27,8 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin:
-      process.env.NODE_ENV === "production"
+    origin: (origin, callback) => {
+      const allowedOrigins = process.env.NODE_ENV === "production"
         ? [
             "https://rebootify.aadi01.me",
             "https://www.rebootify.aadi01.me",
@@ -41,7 +41,15 @@ const io = new Server(server, {
             "http://localhost:5174",
             "http://localhost:3001",
             "http://localhost:3005",
-          ],
+          ];
+      
+      // Allow all Vercel preview URLs
+      if (!origin || allowedOrigins.includes(origin) || origin.includes('.vercel.app')) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -54,8 +62,8 @@ import cookieParser from "cookie-parser";
 
 // Configure CORS based on environment
 const corsOptions = {
-  origin:
-    process.env.NODE_ENV === "production"
+  origin: (origin, callback) => {
+    const allowedOrigins = process.env.NODE_ENV === "production"
       ? [
           "https://rebootify.aadi01.me",
           "https://www.rebootify.aadi01.me",
@@ -69,7 +77,15 @@ const corsOptions = {
           "http://localhost:3005",
           "http://localhost:5173",
           "http://localhost:5174",
-        ],
+        ];
+    
+    // Allow all Vercel preview URLs
+    if (!origin || allowedOrigins.includes(origin) || origin.includes('.vercel.app')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
