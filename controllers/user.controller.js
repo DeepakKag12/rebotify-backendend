@@ -1,6 +1,8 @@
 import User from "../models/user.model.js";
 import { generateToken } from "../utils/jwt.js";
 import RemovedUser from "../models/removed.model.js";
+import OTP from "../models/otp.model.js";
+import { sendOTPEmail } from "../services/emailService.js";
 
 // User Registration
 export const signup = async (req, res) => {
@@ -61,48 +63,56 @@ export const signup = async (req, res) => {
     });
   } catch (error) {
     console.log("Error in signup:", error);
-    res.status(500).json({ message: "Internal server error" });
+    console.log("Error stack:", error.stack);
+    console.log("Error message:", error.message);
+    res.status(500).json({ 
+      message: "Internal server error",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined
+    });
   }
 };
 
-// User Login also check like if user is removed by admin or not
+// User Login - Direct authentication without OTP
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    //first we need to get the user id from the email and then we will check in removed collection
-    const userId = await User.findOne({ email }).select("_id").exec();
-    //check if user is removed by admin
-    const removedUser = await RemovedUser.findOne({ userId: userId?._id });
-    if (removedUser) {
-      return res.status(403).json({
-        message: `Your account has been removed. Reason: ${removedUser.reason}. Please contact admin for more details.`,
-      });
-    }
-    //check if any required field is missing
+
+    // Check if any required field is missing
     if (!email || !password) {
       return res
         .status(400)
         .json({ message: "Please provide all required fields" });
     }
-    //find user by email
+
+    // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).json({ message: "Invalid email" });
     }
-    //check if password matches
+
+    // Check if user is removed by admin
+    const removedUser = await RemovedUser.findOne({ userId: user._id });
+    if (removedUser) {
+      return res.status(403).json({
+        message: `Your account has been removed. Reason: ${removedUser.reason}. Please contact admin for more details.`,
+      });
+    }
+
+    // Check if password matches
     if (user.password !== password) {
       return res.status(400).json({ message: "Invalid password" });
     }
-    //update last login time
+
+    // Update last login time
     user.lasLogin = Date.now();
     await user.save();
 
-    //generate token
+    // Generate token
     const token = generateToken({
       id: user._id,
       email: user.email,
       userType: user.userType,
-    }); //payload can be customized
+    });
 
     // Set token as httpOnly cookie
     res.cookie("token", token, {
@@ -114,6 +124,7 @@ export const login = async (req, res) => {
 
     res.status(200).json({
       message: "Login successful",
+      token,
       user: {
         id: user._id,
         name: user.name,
@@ -124,6 +135,89 @@ export const login = async (req, res) => {
     });
   } catch (error) {
     console.log("Error in login:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Verify OTP and complete login
+export const verifyOTP = async (req, res) => {
+  try {
+    const { userId, email, otp } = req.body;
+
+    if (!otp) {
+      return res.status(400).json({ message: "OTP is required" });
+    }
+
+    if (!userId && !email) {
+      return res.status(400).json({ message: "User ID or email is required" });
+    }
+
+    // Get user first to find email if userId is provided
+    let user;
+    let userEmail;
+
+    if (userId) {
+      user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      userEmail = user.email;
+    } else {
+      userEmail = email;
+      user = await User.findOne({ email: userEmail });
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+    }
+
+    // Find OTP in database
+    const otpDoc = await OTP.findOne({
+      email: userEmail,
+      otp,
+      verified: false,
+      expiresAt: { $gt: new Date() },
+    });
+
+    if (!otpDoc) {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
+
+    // Mark OTP as verified
+    otpDoc.verified = true;
+    await otpDoc.save();
+
+    // Update last login time
+    user.lasLogin = Date.now();
+    await user.save();
+
+    // Generate token
+    const token = generateToken({
+      id: user._id,
+      email: user.email,
+      userType: user.userType,
+    });
+
+    // Set token as httpOnly cookie
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    res.status(200).json({
+      message: "Login successful",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        userType: user.userType,
+        addresses: user.addresses,
+      },
+    });
+  } catch (error) {
+    console.log("Error in verifyOTP:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -188,8 +282,13 @@ export const deleteUser = async (req, res) => {
 };
 //logout user
 export const logout = (req, res) => {
-  //in JWT based auth logout is handled on client side by deleting the token
-  res.status(200).json({ message: "Logout successful on client side" });
+  // Clear the httpOnly cookie
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+  });
+  res.status(200).json({ message: "Logout successful" });
 };
 
 //active user count

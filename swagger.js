@@ -42,10 +42,16 @@ try {
     ];
 
     if (process.env.NODE_ENV === "production") {
-      servers.push({
-        url: "https://rebootify.aadi01.me",
-        description: "Production server",
-      });
+      servers.push(
+        {
+          url: "https://rebotify-backendend-i1lz7442v-deepak-kags-projects.vercel.app",
+          description: "Vercel Production server",
+        },
+        {
+          url: "https://rebootify.aadi01.me",
+          description: "Production server",
+        }
+      );
     }
 
     return servers;
