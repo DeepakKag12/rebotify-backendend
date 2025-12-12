@@ -1,6 +1,7 @@
 import {
   signup,
   login,
+  verifyOTP,
   getAllUsers,
   getUserById,
   deleteUser,
@@ -15,15 +16,22 @@ import { authenticateToken } from "../middleware/authenticateToken.js";
 import express from "express";
 const router = express.Router();
 
+// Public routes
 router.post("/signup", signup);
 router.post("/login", login);
+router.post("/verify-otp", verifyOTP);
+router.post("/logout", logout);
+
+// Protected routes - specific paths first
 router.get("/", authenticateToken, getAllUsers);
-router.delete("/:id", authenticateToken, deleteUser);
+router.get("/total/active", authenticateToken, getActiveUserCount);
 router.get("/total/retention", authenticateToken, getUserRetentionRate);
 router.put("/profile/:id", authenticateToken, updateUserProfile);
-router.delete("/soft-delete/admin/:id", authenticateToken, adminDeleteUser);
-router.post("/logout", authenticateToken, logout);
-router.get("/total/active", authenticateToken, getActiveUserCount);
-router.get("/:id", authenticateToken, getUserById);
 router.put("/address/:id", authenticateToken, updateUserAddress);
+router.delete("/soft-delete/admin/:id", authenticateToken, adminDeleteUser);
+
+// Dynamic routes last
+router.get("/:id", authenticateToken, getUserById);
+router.delete("/:id", authenticateToken, deleteUser);
+
 export default router;
