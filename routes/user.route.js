@@ -1,6 +1,7 @@
 import {
   signup,
   login,
+  loginWithOTP,
   verifyOTP,
   getAllUsers,
   getUserById,
@@ -19,6 +20,7 @@ const router = express.Router();
 // Public routes
 router.post("/signup", signup);
 router.post("/login", login);
+router.post("/login-with-otp", loginWithOTP);
 router.post("/verify-otp", verifyOTP);
 router.post("/logout", logout);
 

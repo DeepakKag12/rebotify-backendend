@@ -139,6 +139,68 @@ export const login = async (req, res) => {
   }
 };
 
+// User Login with OTP - Send OTP for email verification
+export const loginWithOTP = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Check if any required field is missing
+    if (!email || !password) {
+      return res
+        .status(400)
+        .json({ message: "Please provide all required fields" });
+    }
+
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: "Invalid email" });
+    }
+
+    // Check if user is removed by admin
+    const removedUser = await RemovedUser.findOne({ userId: user._id });
+    if (removedUser) {
+      return res.status(403).json({
+        message: `Your account has been removed. Reason: ${removedUser.reason}. Please contact admin for more details.`,
+      });
+    }
+
+    // Check if password matches
+    if (user.password !== password) {
+      return res.status(400).json({ message: "Invalid password" });
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Delete any existing OTPs for this user
+    await OTP.deleteMany({ userId: user._id });
+
+    // Save new OTP
+    await OTP.create({
+      userId: user._id,
+      email: user.email,
+      otp,
+      expiresAt,
+    });
+
+    // Send OTP email
+    await sendOTPEmail(user.email, otp, user.name);
+
+    res.status(200).json({
+      requireOTP: true,
+      message: "OTP sent to your email",
+      userId: user._id,
+      email: user.email,
+      expiresAt: expiresAt.toISOString(),
+    });
+  } catch (error) {
+    console.log("Error in loginWithOTP:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 // Verify OTP and complete login
 export const verifyOTP = async (req, res) => {
   try {
