@@ -33,6 +33,7 @@ const io = new Server(server, {
             "https://rebootify.aadi01.me",
             "https://www.rebootify.aadi01.me",
             "https://rebot-frontend.vercel.app",
+            "https://rebotify-frontend.vercel.app",
             "https://rebotify-backendend-i1lz7442v-deepak-kags-projects.vercel.app",
           ]
         : [
@@ -59,6 +60,7 @@ const corsOptions = {
           "https://rebootify.aadi01.me",
           "https://www.rebootify.aadi01.me",
           "https://rebot-frontend.vercel.app",
+          "https://rebotify-frontend.vercel.app",
           "https://rebotify-backendend-i1lz7442v-deepak-kags-projects.vercel.app",
         ]
       : [
