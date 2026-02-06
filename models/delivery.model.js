@@ -11,23 +11,52 @@ const deliverySchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
-    sellerId:{
+    sellerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
-    buyerId:{
+    buyerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+    },
+    deliveryPartnerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
     },
     status_delivery: {
       type: String,
-      enum: ["pending", "shipped", "outForDelivery", "Delivered", "canceled"],
+      enum: ["pending", "shipped", "outForDelivery", "delivered"],
       default: "pending",
     },
     trackingNumber: {
       type: String,
+    },
+    statusHistory: [
+      {
+        status: {
+          type: String,
+          enum: ["pending", "shipped", "outForDelivery", "delivered"],
+        },
+        timestamp: {
+          type: Date,
+          default: Date.now,
+        },
+        notes: {
+          type: String,
+          default: "",
+        },
+        updatedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+      },
+    ],
+    deliveryNotes: {
+      type: String,
+      default: "",
     },
     createdAt: {
       type: Date,
@@ -40,6 +69,18 @@ const deliverySchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Add initial status to history on creation
+deliverySchema.pre("save", function (next) {
+  if (this.isNew) {
+    this.statusHistory.push({
+      status: "pending",
+      timestamp: new Date(),
+      notes: "Delivery created",
+    });
+  }
+  next();
+});
 
 const Delivery = mongoose.model("Delivery", deliverySchema);
 export default Delivery;

@@ -13,6 +13,7 @@ import certificateRoutes from "./routes/certificate.route.js";
 import chatRoutes from "./routes/chat.route.js";
 import deliveryRoutes from "./routes/delivery.route.js";
 import bidRoutes from "./routes/bid.route.js";
+import transactionRoutes from "./routes/transaction.route.js";
 // Import Socket handlers
 import {
   authenticateSocket,
@@ -25,31 +26,22 @@ import { apiReference } from "@scalar/express-api-reference";
 
 const app = express();
 const server = createServer(app);
+// All allowed origins (both production and local dev)
+const allowedOrigins = [
+  "https://rebootify.aadi01.me",
+  "https://www.rebootify.aadi01.me",
+  "https://rebot-frontend.vercel.app",
+  "https://rebotify-frontend.vercel.app",
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "http://localhost:3005",
+  "http://localhost:5173",
+  "http://localhost:5174",
+];
+
 const io = new Server(server, {
   cors: {
-    origin: (origin, callback) => {
-      const allowedOrigins = process.env.NODE_ENV === "production"
-        ? [
-            "https://rebootify.aadi01.me",
-            "https://www.rebootify.aadi01.me",
-            "https://rebot-frontend.vercel.app",
-            "https://rebotify-frontend.vercel.app",
-            "https://rebotify-backendend-i1lz7442v-deepak-kags-projects.vercel.app",
-          ]
-        : [
-            "http://localhost:5173",
-            "http://localhost:5174",
-            "http://localhost:3001",
-            "http://localhost:3005",
-          ];
-      
-      // Allow all Vercel preview URLs
-      if (!origin || allowedOrigins.includes(origin) || origin.includes('.vercel.app')) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -60,32 +52,9 @@ const PORT = process.env.PORT || 3001;
 //middleware
 import cookieParser from "cookie-parser";
 
-// Configure CORS based on environment
+// Configure CORS - allow all origins for both production and local dev
 const corsOptions = {
-  origin: (origin, callback) => {
-    const allowedOrigins = process.env.NODE_ENV === "production"
-      ? [
-          "https://rebootify.aadi01.me",
-          "https://www.rebootify.aadi01.me",
-          "https://rebot-frontend.vercel.app",
-          "https://rebotify-frontend.vercel.app",
-          "https://rebotify-backendend-i1lz7442v-deepak-kags-projects.vercel.app",
-        ]
-      : [
-          "http://localhost:3000",
-          "http://localhost:3001",
-          "http://localhost:3005",
-          "http://localhost:5173",
-          "http://localhost:5174",
-        ];
-    
-    // Allow all Vercel preview URLs
-    if (!origin || allowedOrigins.includes(origin) || origin.includes('.vercel.app')) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: allowedOrigins,
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
@@ -150,6 +119,7 @@ app.use("/api/certificates", certificateRoutes);
 app.use("/api/chats", chatRoutes);
 app.use("/api/deliveries", deliveryRoutes);
 app.use("/api/bids", bidRoutes);
+app.use("/api/transactions", transactionRoutes);
 // Root endpoint with API documentation links
 app.get("/", (req, res) => {
   res.json({

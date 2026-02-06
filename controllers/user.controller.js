@@ -1,8 +1,13 @@
 import User from "../models/user.model.js";
+import OTP from "../models/otp.model.js";
 import { generateToken } from "../utils/jwt.js";
 import RemovedUser from "../models/removed.model.js";
-import OTP from "../models/otp.model.js";
-import { sendOTPEmail } from "../services/emailService.js";
+import { sendVerificationEmail } from "../services/mailVerficationservice.js";
+
+//generate otp
+const generateOTP = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString(); //6 digit otp
+};
 
 // User Registration
 export const signup = async (req, res) => {
@@ -40,6 +45,11 @@ export const signup = async (req, res) => {
         .status(400)
         .json({ message: "User with this email already exists" });
     }
+    //email verification otp generation and sending email
+    const otp = generateOTP();
+    //send email
+    // await sendVerificationEmail(email, otp);
+
     // Create new user with address and coordinates
     const newUser = new User({
       name,
@@ -57,40 +67,37 @@ export const signup = async (req, res) => {
         id: newUser._id,
         name: newUser.name,
         email: newUser.email,
+        phone: newUser.phone,
         userType: newUser.userType,
         addresses: newUser.addresses,
       },
     });
   } catch (error) {
     console.log("Error in signup:", error);
-    console.log("Error stack:", error.stack);
-    console.log("Error message:", error.message);
-    res.status(500).json({ 
-      message: "Internal server error",
-      error: process.env.NODE_ENV === "development" ? error.message : undefined
-    });
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
-// User Login - Direct authentication without OTP
+// User Login - Step 1: Validate credentials and send OTP
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Check if any required field is missing
+    //check if any required field is missing
     if (!email || !password) {
       return res
         .status(400)
         .json({ message: "Please provide all required fields" });
     }
 
-    // Find user by email
-    const user = await User.findOne({ email });
+    //first we need to get the user id from the email and then we will check in removed collection
+    const user = await User.findOne({ email }).exec();
+
     if (!user) {
       return res.status(400).json({ message: "Invalid email" });
     }
 
-    // Check if user is removed by admin
+    //check if user is removed by admin
     const removedUser = await RemovedUser.findOne({ userId: user._id });
     if (removedUser) {
       return res.status(403).json({
@@ -98,40 +105,45 @@ export const login = async (req, res) => {
       });
     }
 
-    // Check if password matches
+    //check if password matches
     if (user.password !== password) {
       return res.status(400).json({ message: "Invalid password" });
     }
 
-    // Update last login time
-    user.lasLogin = Date.now();
-    await user.save();
+    // Generate and send OTP
+    const otp = generateOTP();
+    const expiresAt = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes from now
 
-    // Generate token
-    const token = generateToken({
-      id: user._id,
+    // Delete any existing OTPs for this user
+    await OTP.deleteMany({ userId: user._id, verified: false });
+
+    // Create new OTP record
+    const newOTP = new OTP({
+      userId: user._id,
       email: user.email,
-      userType: user.userType,
+      otp,
+      expiresAt,
+      verified: false,
     });
 
-    // Set token as httpOnly cookie
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+    await newOTP.save();
+
+    // Send OTP via email
+    try {
+      await sendVerificationEmail(user.email, otp);
+    } catch (emailError) {
+      console.error("Error sending OTP email:", emailError);
+      return res.status(500).json({
+        message: "Failed to send OTP email. Please try again later.",
+      });
+    }
 
     res.status(200).json({
-      message: "Login successful",
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        userType: user.userType,
-        addresses: user.addresses,
-      },
+      message: "OTP sent to your email",
+      requireOTP: true,
+      userId: user._id,
+      email: user.email,
+      expiresAt,
     });
   } catch (error) {
     console.log("Error in login:", error);
@@ -139,114 +151,41 @@ export const login = async (req, res) => {
   }
 };
 
-// User Login with OTP - Send OTP for email verification
-export const loginWithOTP = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    // Check if any required field is missing
-    if (!email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Please provide all required fields" });
-    }
-
-    // Find user by email
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ message: "Invalid email" });
-    }
-
-    // Check if user is removed by admin
-    const removedUser = await RemovedUser.findOne({ userId: user._id });
-    if (removedUser) {
-      return res.status(403).json({
-        message: `Your account has been removed. Reason: ${removedUser.reason}. Please contact admin for more details.`,
-      });
-    }
-
-    // Check if password matches
-    if (user.password !== password) {
-      return res.status(400).json({ message: "Invalid password" });
-    }
-
-    // Generate 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
-    // Delete any existing OTPs for this user
-    await OTP.deleteMany({ userId: user._id });
-
-    // Save new OTP
-    await OTP.create({
-      userId: user._id,
-      email: user.email,
-      otp,
-      expiresAt,
-    });
-
-    // Send OTP email
-    await sendOTPEmail(user.email, otp, user.name);
-
-    res.status(200).json({
-      requireOTP: true,
-      message: "OTP sent to your email",
-      userId: user._id,
-      email: user.email,
-      expiresAt: expiresAt.toISOString(),
-    });
-  } catch (error) {
-    console.log("Error in loginWithOTP:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-};
-
-// Verify OTP and complete login
+// User Login - Step 2: Verify OTP and complete login
 export const verifyOTP = async (req, res) => {
   try {
-    const { userId, email, otp } = req.body;
+    const { userId, otp } = req.body;
 
-    if (!otp) {
-      return res.status(400).json({ message: "OTP is required" });
+    if (!userId || !otp) {
+      return res.status(400).json({ message: "Please provide userId and OTP" });
     }
 
-    if (!userId && !email) {
-      return res.status(400).json({ message: "User ID or email is required" });
-    }
-
-    // Get user first to find email if userId is provided
-    let user;
-    let userEmail;
-
-    if (userId) {
-      user = await User.findById(userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      userEmail = user.email;
-    } else {
-      userEmail = email;
-      user = await User.findOne({ email: userEmail });
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-    }
-
-    // Find OTP in database
-    const otpDoc = await OTP.findOne({
-      email: userEmail,
+    // Find the OTP record
+    const otpRecord = await OTP.findOne({
+      userId,
       otp,
       verified: false,
-      expiresAt: { $gt: new Date() },
     });
 
-    if (!otpDoc) {
-      return res.status(400).json({ message: "Invalid or expired OTP" });
+    if (!otpRecord) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    // Check if OTP has expired
+    if (new Date() > otpRecord.expiresAt) {
+      await OTP.deleteOne({ _id: otpRecord._id });
+      return res.status(400).json({ message: "OTP has expired" });
     }
 
     // Mark OTP as verified
-    otpDoc.verified = true;
-    await otpDoc.save();
+    otpRecord.verified = true;
+    await otpRecord.save();
+
+    // Get user details
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
     // Update last login time
     user.lasLogin = Date.now();
@@ -267,13 +206,17 @@ export const verifyOTP = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
+    // Delete the OTP record after successful verification
+    await OTP.deleteOne({ _id: otpRecord._id });
+
     res.status(200).json({
       message: "Login successful",
-      token,
+      token: token,
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
+        phone: user.phone,
         userType: user.userType,
         addresses: user.addresses,
       },
@@ -344,13 +287,8 @@ export const deleteUser = async (req, res) => {
 };
 //logout user
 export const logout = (req, res) => {
-  // Clear the httpOnly cookie
-  res.clearCookie("token", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-  });
-  res.status(200).json({ message: "Logout successful" });
+  //in JWT based auth logout is handled on client side by deleting the token
+  res.status(200).json({ message: "Logout successful on client side" });
 };
 
 //active user count
@@ -498,6 +436,46 @@ export const updateUserAddress = async (req, res) => {
     });
   } catch (error) {
     console.log("Error in updateUserAddress:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Get admin statistics
+export const getAdminStats = async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user || user.userType !== "admin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    // Get user counts by type
+    const totalUsers = await User.countDocuments();
+    const sellers = await User.countDocuments({ userType: "user" });
+    const recyclers = await User.countDocuments({ userType: "recycler" });
+    const deliveryPartners = await User.countDocuments({
+      userType: "delivery",
+    });
+    const admins = await User.countDocuments({ userType: "admin" });
+
+    // Get recent users (last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const newUsersThisWeek = await User.countDocuments({
+      createdAt: { $gte: sevenDaysAgo },
+    });
+
+    res.status(200).json({
+      totalUsers,
+      usersByType: {
+        sellers,
+        recyclers,
+        deliveryPartners,
+        admins,
+      },
+      newUsersThisWeek,
+    });
+  } catch (error) {
+    console.log("Error in getAdminStats:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };

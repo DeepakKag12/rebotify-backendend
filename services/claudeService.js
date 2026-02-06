@@ -8,7 +8,7 @@ const anthropic = new Anthropic({
 
 export const analyzeProductImages = async (imagePaths, categoryHint = null) => {
   try {
-    console.log("Starting product analysis with Claude 3.7 Sonnet...");
+    console.log("Starting product analysis with Claude 3.5 Haiku...");
 
     if (!imagePaths || imagePaths.length === 0) {
       throw new Error("No images provided for analysis");
@@ -19,7 +19,7 @@ export const analyzeProductImages = async (imagePaths, categoryHint = null) => {
     const base64Image = imageBuffer.toString("base64");
 
     const response = await anthropic.messages.create({
-      model: "claude-3-7-sonnet-20250219",
+      model: "claude-3-5-haiku-20241022",
       max_tokens: 2000,
       messages: [
         {
@@ -121,23 +121,32 @@ RULES:
     analysisResult.analysis_metadata = {
       analyzed_at: new Date().toISOString(),
       images_count: imagePaths.length,
-      model_used: "claude-3-7-sonnet-20250219",
+      model_used: "claude-3-5-haiku-20241022",
       processing_time: Date.now(),
     };
 
-    console.log("Claude 3.7 analysis completed successfully");
+    console.log("Claude 3.5 Haiku analysis completed successfully");
     return analysisResult;
   } catch (error) {
-    console.error("Error analyzing with Claude 3.7:", error);
+    console.error("Error analyzing with Claude 3.5 Haiku:", error);
+    
+    // Check if it's an API authentication/authorization error
+    const isAuthError = error.status === 403 || error.status === 401 || 
+                        error.message?.includes('403') || error.message?.includes('401') ||
+                        error.message?.includes('Forbidden') || error.message?.includes('Unauthorized');
+    
     return {
       error: true,
-      message: error.message,
+      api_error: isAuthError,
+      message: isAuthError 
+        ? "AI service temporarily unavailable. Please fill in product details manually."
+        : error.message,
       fallback_data: {
-        product_category: "unknown",
-        brand: "unknown",
-        model: "unknown",
-        condition: "unknown",
-        description: "AI analysis failed. Please fill in details manually.",
+        product_category: "other_electronics",
+        brand: "",
+        model: "",
+        condition: "good",
+        description: "",
         confidence_score: 0.0,
       },
     };

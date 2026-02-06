@@ -39,6 +39,24 @@ const bidSchema = new mongoose.Schema(
       enum: ["open", "closed"],
       default: "open",
     },
+    buyerAccepted: {
+      type: Boolean,
+      default: false,
+    },
+    sellerAccepted: {
+      type: Boolean,
+      default: false,
+    },
+    isPaid: {
+      type: Boolean,
+      default: false,
+    },
+    invoiceNumber: {
+      type: String,
+    },
+    paymentDate: {
+      type: Date,
+    },
     minimumBidIncrement: {
       type: Number,
       default: 1, // Minimum amount by which new bid should exceed current highest bid
@@ -49,7 +67,7 @@ const bidSchema = new mongoose.Schema(
     },
     closeReason: {
       type: String,
-      enum: ["buyer_selected", "auction_ended", "seller_cancelled"],
+      enum: ["buyer_selected", "auction_ended", "seller_cancelled", "payment_completed"],
     },
     closedAt: {
       type: Date,
