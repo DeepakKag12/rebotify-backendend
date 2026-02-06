@@ -37,28 +37,17 @@ export const analyzeProductImagesEndpoint = async (req, res) => {
       });
     }
 
-    // Process uploaded files: get the filenames with their folder path
-    const imagePaths = req.files.map((file) => `uploads/${file.filename}`);
-    console.log(`📸 Processing ${imagePaths.length} images:`, imagePaths);
+    // Extract image buffers from multer memory storage
+    const imageBuffers = req.files.map((file) => file.buffer);
+    console.log(`📸 Processing ${imageBuffers.length} images in memory`);
 
     // Step 1: Quick category detection for optimized analysis
     console.log("🔍 Detecting product category...");
-    const categoryHint = await detectProductCategory(imagePaths[0]); // Use first image for category detection
+    const categoryHint = await detectProductCategory(imageBuffers[0]); // Use first image for category detection
     console.log(`📱 Detected category hint: ${categoryHint || "unknown"}`);
 
-    // If not electronics, clean up and return error
+    // If not electronics, return error (no cleanup needed with memory storage)
     if (!categoryHint) {
-      // Delete uploaded files since they're not valid product images
-      await Promise.all(
-        imagePaths.map(async (imagePath) => {
-          try {
-            await fs.unlink(imagePath);
-          } catch (unlinkError) {
-            console.warn("Warning: Could not delete file:", imagePath);
-          }
-        })
-      );
-
       return res.status(400).json({
         success: false,
         error: "invalid_product_type",
@@ -72,7 +61,7 @@ export const analyzeProductImagesEndpoint = async (req, res) => {
 
     // Step 2: Comprehensive AI analysis
     console.log("🤖 Running comprehensive AI analysis...");
-    const analysisResult = await analyzeProductImages(imagePaths, categoryHint);
+    const analysisResult = await analyzeProductImages(imageBuffers, categoryHint);
 
     // Check if AI analysis returned an API error (403/401) - allow manual entry
     if (analysisResult.api_error) {
@@ -95,7 +84,7 @@ export const analyzeProductImagesEndpoint = async (req, res) => {
             price: "",
             price_type: "negotiable",
           },
-          image_paths: imagePaths,
+          image_paths: [],
           confidence_score: 0,
         },
       });
@@ -103,17 +92,6 @@ export const analyzeProductImagesEndpoint = async (req, res) => {
 
     // Check if AI analysis returned an error
     if (analysisResult.error === "not_electronics") {
-      // Delete uploaded files since they're not valid product images
-      await Promise.all(
-        imagePaths.map(async (imagePath) => {
-          try {
-            await fs.unlink(imagePath);
-          } catch (unlinkError) {
-            console.warn("Warning: Could not delete file:", imagePath);
-          }
-        })
-      );
-
       return res.status(400).json({
         success: false,
         error: "invalid_product_type",
@@ -161,9 +139,9 @@ export const analyzeProductImagesEndpoint = async (req, res) => {
         },
 
         // Metadata
-        image_paths: imagePaths,
+        image_paths: [],
         processing_info: {
-          images_analyzed: imagePaths.length,
+          images_analyzed: imageBuffers.length,
           category_detected: categoryHint,
           confidence_level: enhancedResult.confidence_scores?.overall || 0,
           quality_rating: enhancedResult.analysis_quality?.high_confidence
