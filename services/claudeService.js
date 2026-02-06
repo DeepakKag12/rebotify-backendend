@@ -1,22 +1,20 @@
 import Anthropic from "@anthropic-ai/sdk";
-import fs from "fs/promises";
-import path from "path";
 
 const anthropic = new Anthropic({
   apiKey: process.env.CLAUDE_API_KEY,
 });
 
-export const analyzeProductImages = async (imagePaths, categoryHint = null) => {
+export const analyzeProductImages = async (imageBuffers, categoryHint = null) => {
   try {
     console.log("Starting product analysis with Claude 3.5 Haiku...");
 
-    if (!imagePaths || imagePaths.length === 0) {
+    if (!imageBuffers || imageBuffers.length === 0) {
       throw new Error("No images provided for analysis");
     }
 
-    const firstImagePath = path.join(process.cwd(), imagePaths[0]);
-    const imageBuffer = await fs.readFile(firstImagePath);
-    const base64Image = imageBuffer.toString("base64");
+    // Use the first image buffer for analysis
+    const firstImageBuffer = imageBuffers[0];
+    const base64Image = firstImageBuffer.toString("base64");
 
     const response = await anthropic.messages.create({
       model: "claude-3-5-haiku-20241022",
@@ -120,7 +118,7 @@ RULES:
 
     analysisResult.analysis_metadata = {
       analyzed_at: new Date().toISOString(),
-      images_count: imagePaths.length,
+      images_count: imageBuffers.length,
       model_used: "claude-3-5-haiku-20241022",
       processing_time: Date.now(),
     };
