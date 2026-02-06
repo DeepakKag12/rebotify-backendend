@@ -4,6 +4,28 @@ const anthropic = new Anthropic({
   apiKey: process.env.CLAUDE_API_KEY,
 });
 
+/**
+ * Detect MIME type from image buffer
+ */
+function detectMimeType(buffer) {
+  const signatures = {
+    'ffd8ff': 'image/jpeg',
+    '89504e47': 'image/png',
+    '47494638': 'image/gif',
+    '52494646': 'image/webp',
+  };
+  
+  const hex = buffer.slice(0, 4).toString('hex');
+  for (const [signature, mimeType] of Object.entries(signatures)) {
+    if (hex.startsWith(signature)) {
+      return mimeType;
+    }
+  }
+  
+  // Default to jpeg if unknown
+  return 'image/jpeg';
+}
+
 export const analyzeProductImages = async (imageBuffers, categoryHint = null) => {
   try {
     console.log("Starting product analysis with Claude 3.5 Haiku...");
@@ -15,6 +37,9 @@ export const analyzeProductImages = async (imageBuffers, categoryHint = null) =>
     // Use the first image buffer for analysis
     const firstImageBuffer = imageBuffers[0];
     const base64Image = firstImageBuffer.toString("base64");
+    const mimeType = detectMimeType(firstImageBuffer);
+    
+    console.log(`Detected MIME type: ${mimeType}`);
 
     const response = await anthropic.messages.create({
       model: "claude-3-5-haiku-20241022",
@@ -63,7 +88,7 @@ RULES:
               type: "image",
               source: {
                 type: "base64",
-                media_type: "image/jpeg",
+                media_type: mimeType,
                 data: base64Image,
               },
             },
