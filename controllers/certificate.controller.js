@@ -3,6 +3,7 @@ import {
   sendCertificateApprovalEmail,
   sendCertificateDisapprovalEmail,
 } from "../services/mailVerficationservice.js";
+import { uploadImageToCloudinary } from "../services/cloudinaryService.js";
 
 //Upload Certificate
 
@@ -60,7 +61,20 @@ export const uploadCertificate = async (req, res) => {
         .status(400)
         .json({ message: "Please upload the certificate document" });
     }
-    const uploadDocument = `uploads/${req.file.filename}`;
+    
+    // Upload document to Cloudinary
+    let uploadDocument;
+    try {
+      uploadDocument = await uploadImageToCloudinary(req.file.buffer, 'certificates');
+      console.log('Certificate uploaded to Cloudinary:', uploadDocument);
+    } catch (uploadError) {
+      console.error('Error uploading certificate to Cloudinary:', uploadError);
+      return res.status(500).json({ 
+        message: 'Failed to upload certificate document. Please try again.',
+        error: process.env.NODE_ENV === 'development' ? uploadError.message : undefined
+      });
+    }
+    
     //create new certificate
     const newCertificate = new Certificate({
       uploadby: uploadBy,
@@ -296,8 +310,17 @@ export const updateCertificateDetails = async (req, res) => {
     }
     //check if file is uploaded
     if (req.file) {
-      const uploadDocument = `uploads/${req.file.filename}`;
-      certificate.uploadDocument = uploadDocument;
+      try {
+        const uploadDocument = await uploadImageToCloudinary(req.file.buffer, 'certificates');
+        certificate.uploadDocument = uploadDocument;
+        console.log('Certificate updated in Cloudinary:', uploadDocument);
+      } catch (uploadError) {
+        console.error('Error uploading certificate to Cloudinary:', uploadError);
+        return res.status(500).json({ 
+          message: 'Failed to upload certificate document. Please try again.',
+          error: process.env.NODE_ENV === 'development' ? uploadError.message : undefined
+        });
+      }
     }
     await certificate.save();
     res.status(200).json({
