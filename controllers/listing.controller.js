@@ -4,7 +4,7 @@ import {
   detectProductCategory,
   validateAndEnhanceAnalysis,
 } from "../services/claudeService.js";
-import fs from "fs/promises";
+import { uploadMultipleImagesToCloudinary } from "../services/cloudinaryService.js";
 import Delivery from "../models/delivery.model.js";
 // AI-powered image analysis endpoint
 export const analyzeProductImagesEndpoint = async (req, res) => {
@@ -304,11 +304,22 @@ export const createListing = async (req, res) => {
     if (phone && !phoneRegex.test(phone)) {
       return res.status(400).json({ error: "Invalid phone number format." });
     }
-    // Process uploaded files: get the filenames with their folder path
-    const imagePaths =
-      req.files && Array.isArray(req.files)
-        ? req.files.map((file) => `uploads/${file.filename}`)
-        : [];
+    
+    // Upload images to Cloudinary
+    let imagePaths = [];
+    if (req.files && Array.isArray(req.files) && req.files.length > 0) {
+      try {
+        const imageBuffers = req.files.map(file => file.buffer);
+        imagePaths = await uploadMultipleImagesToCloudinary(imageBuffers, 'listings');
+        console.log('Uploaded images to Cloudinary:', imagePaths);
+      } catch (uploadError) {
+        console.error('Error uploading images to Cloudinary:', uploadError);
+        return res.status(500).json({ 
+          error: 'Failed to upload images. Please try again.',
+          details: process.env.NODE_ENV === 'development' ? uploadError.message : undefined
+        });
+      }
+    }
 
     // Convert checkbox array fields to comma-separated strings
     const accessoriesStr = Array.isArray(accessories)
@@ -586,11 +597,20 @@ export const updateListing = async (req, res) => {
     // Process new uploaded files if any
     let imagePaths = listing.image_paths; // Keep existing images by default
     if (req.files && Array.isArray(req.files) && req.files.length > 0) {
-      // If new images are uploaded, replace old ones
-      imagePaths = req.files.map((file) => `uploads/${file.filename}`);
-
-      // Optional: Delete old image files from filesystem
-      // This requires fs module and proper error handling
+      try {
+        // Upload new images to Cloudinary
+        const imageBuffers = req.files.map(file => file.buffer);
+        imagePaths = await uploadMultipleImagesToCloudinary(imageBuffers, 'listings');
+        console.log('Uploaded updated images to Cloudinary:', imagePaths);
+        
+        // Note: Old Cloudinary images are kept. You can add deletion logic here if needed.
+      } catch (uploadError) {
+        console.error('Error uploading images to Cloudinary:', uploadError);
+        return res.status(500).json({ 
+          error: 'Failed to upload images. Please try again.',
+          details: process.env.NODE_ENV === 'development' ? uploadError.message : undefined
+        });
+      }
     }
 
     // Convert arrays to comma-separated strings
