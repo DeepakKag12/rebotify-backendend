@@ -15,10 +15,6 @@ const generateServers = () => {
       description: "Development server",
     },
     {
-      url: "https://rebotify-backendend-i1lz7442v-deepak-kags-projects.vercel.app",
-      description: "Vercel Production server",
-    },
-    {
       url: "https://rebootify.aadi01.me",
       description: "Production server",
     },

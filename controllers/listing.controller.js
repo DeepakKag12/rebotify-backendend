@@ -74,6 +74,33 @@ export const analyzeProductImagesEndpoint = async (req, res) => {
     console.log("🤖 Running comprehensive AI analysis...");
     const analysisResult = await analyzeProductImages(imagePaths, categoryHint);
 
+    // Check if AI analysis returned an API error (403/401) - allow manual entry
+    if (analysisResult.api_error) {
+      console.log("⚠️ AI service unavailable, allowing manual entry");
+      return res.status(200).json({
+        success: true,
+        ai_available: false,
+        message: "AI analysis unavailable. Please fill in product details manually.",
+        data: {
+          analysis: analysisResult.fallback_data,
+          suggested_form_data: {
+            product_category: "",
+            brand: "",
+            model: "",
+            manufacture_year: new Date().getFullYear(),
+            condition: "good",
+            description: "",
+            accessories: "",
+            battery: "",
+            price: "",
+            price_type: "negotiable",
+          },
+          image_paths: imagePaths,
+          confidence_score: 0,
+        },
+      });
+    }
+
     // Check if AI analysis returned an error
     if (analysisResult.error === "not_electronics") {
       // Delete uploaded files since they're not valid product images
@@ -361,6 +388,7 @@ export const createListing = async (req, res) => {
       phone,
       contact_preference: contactPreference || "phone",
       location,
+      address: address || "",
       status: "open", // Default status is open
     });
 
@@ -383,13 +411,13 @@ export const getAllStatusBasedListings = async (req, res) => {
     //we can get the status from the params useing query
     const status = req.query.status;
 
-    const listengs = await Listing.find({ status: status })
+    const listings = await Listing.find({ status: status })
       .skip(skip)
       .limit(limit)
       .exec();
 
     const totalListings = await Listing.countDocuments({
-      status: "open",
+      status: status,
     }).exec();
     const totalPages = Math.ceil(totalListings / limit);
 
@@ -397,7 +425,7 @@ export const getAllStatusBasedListings = async (req, res) => {
       page,
       totalPages,
       totalListings,
-      listengs,
+      listings,
     });
   } catch (error) {
     console.log("Error in getAllOpenListings:", error);
