@@ -11,10 +11,21 @@ const connectDB = async () => {
   }
 
   try {
-    const mongoUri = process.env.MONGO_URL;
+    const mongoUri = process.env.MONGO_URL || process.env.MONGODB_URI;
     if (!mongoUri) {
-      throw new Error("MONGO_URI environment variable is not defined");
+      throw new Error(
+        "MongoDB URI is not defined. Set MONGO_URL or MONGODB_URI."
+      );
     }
+
+    let mongoHost = "unknown-host";
+    try {
+      mongoHost = new URL(mongoUri).hostname;
+    } catch {
+      // Keep host as unknown if URI parsing fails.
+    }
+
+    console.log(`Attempting MongoDB connection to ${mongoHost}`);
 
     await mongoose.connect(mongoUri, {
       bufferCommands: false, // Disable mongoose buffering
@@ -27,7 +38,10 @@ const connectDB = async () => {
     isConnected = true;
     console.log("MongoDB connected successfully");
   } catch (error) {
-    console.error("MongoDB connection failed:", error.message);
+    console.error("MongoDB connection failed:", error?.message || error);
+    if (error?.code) {
+      console.error("MongoDB error code:", error.code);
+    }
     throw error; // Don't exit process in serverless environment
   }
 };
