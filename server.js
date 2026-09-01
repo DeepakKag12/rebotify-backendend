@@ -32,6 +32,8 @@ const allowedOrigins = [
   "https://www.rebootify.aadi01.me",
   "https://rebot-frontend.vercel.app",
   "https://rebotify-frontend.vercel.app",
+  "https://rebotify-frontend-4i76xt1tw-deepak-kags-projects.vercel.app",
+  "https://rebotify-backendend.vercel.app",
   "http://localhost:3000",
   "http://localhost:3001",
   "http://localhost:3005",
@@ -39,9 +41,24 @@ const allowedOrigins = [
   "http://localhost:5174",
 ];
 
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true;
+  return (
+    allowedOrigins.includes(origin) ||
+    origin.endsWith(".vercel.app") ||
+    origin.endsWith(".vercel.app/")
+  );
+};
+
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      if (isAllowedOrigin(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error("Not allowed by CORS"));
+    },
     methods: ["GET", "POST"],
     credentials: true,
   },

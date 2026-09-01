@@ -11,6 +11,10 @@ const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString(); //6 digit otp
 };
 
+const isValidPassword = (password) => {
+  return typeof password === "string" && password.length >= 6 && /^(?=.*[A-Za-z])(?=.*\d).+$/.test(password);
+};
+
 // User Registration
 export const signup = async (req, res) => {
   try {
@@ -38,6 +42,12 @@ export const signup = async (req, res) => {
       return res
         .status(400)
         .json({ message: "Please provide a valid email address" });
+    }
+
+    if (!isValidPassword(password)) {
+      return res.status(400).json({
+        message: "Password must be at least 6 characters and contain both letters and numbers",
+      });
     }
 
     // Check if user already exists
@@ -374,8 +384,10 @@ export const resetPassword = async (req, res) => {
       return res.status(400).json({ message: "Reset token and new password are required" });
     }
 
-    if (password.length < 6) {
-      return res.status(400).json({ message: "Password must be at least 6 characters long" });
+    if (!isValidPassword(password)) {
+      return res.status(400).json({
+        message: "Password must be at least 6 characters and contain both letters and numbers",
+      });
     }
 
     const user = await User.findOne({
