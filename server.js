@@ -144,6 +144,15 @@ app.use("/api/chats", chatRoutes);
 app.use("/api/deliveries", deliveryRoutes);
 app.use("/api/bids", bidRoutes);
 app.use("/api/transactions", transactionRoutes);
+
+// Keep legacy deployments working while the frontend is rebuilt with /api URLs.
+app.use("/users", userRoutes);
+app.use("/listings", listingRoutes);
+app.use("/certificates", certificateRoutes);
+app.use("/chats", chatRoutes);
+app.use("/deliveries", deliveryRoutes);
+app.use("/bids", bidRoutes);
+app.use("/transactions", transactionRoutes);
 // Root endpoint with API documentation links
 app.get("/", (req, res) => {
   res.json({
