@@ -1,8 +1,9 @@
+import crypto from "crypto";
 import User from "../models/user.model.js";
 import { generateToken } from "../utils/jwt.js";
 import RemovedUser from "../models/removed.model.js";
 import OTP from "../models/otp.model.js";
-import { sendOTPEmail } from "../services/emailService.js";
+import { sendOTPEmail, sendResetPasswordEmail } from "../services/emailService.js";
 
 // User Registration
 export const signup = async (req, res) => {
@@ -142,22 +143,17 @@ export const login = async (req, res) => {
 // User Login with OTP - Send OTP for email verification
 export const loginWithOTP = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email } = req.body;
 
-    // Check if any required field is missing
-    if (!email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Please provide all required fields" });
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
     }
 
-    // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).json({ message: "Invalid email" });
     }
 
-    // Check if user is removed by admin
     const removedUser = await RemovedUser.findOne({ userId: user._id });
     if (removedUser) {
       return res.status(403).json({
@@ -165,19 +161,10 @@ export const loginWithOTP = async (req, res) => {
       });
     }
 
-    // Check if password matches
-    if (user.password !== password) {
-      return res.status(400).json({ message: "Invalid password" });
-    }
-
-    // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    // Delete any existing OTPs for this user
     await OTP.deleteMany({ userId: user._id });
-
-    // Save new OTP
     await OTP.create({
       userId: user._id,
       email: user.email,
@@ -185,7 +172,6 @@ export const loginWithOTP = async (req, res) => {
       expiresAt,
     });
 
-    // Send OTP email
     await sendOTPEmail(user.email, otp, user.name);
 
     res.status(200).json({
@@ -342,6 +328,71 @@ export const deleteUser = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "No account found with that email address." });
+    }
+
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+    user.resetPasswordToken = token;
+    user.resetPasswordExpires = expiresAt;
+    await user.save();
+
+    await sendResetPasswordEmail(user.email, user.name, token);
+
+    res.status(200).json({
+      message: "Password reset link sent to your email.",
+      email: user.email,
+    });
+  } catch (error) {
+    console.log("Error in forgotPassword:", error);
+    res.status(500).json({ message: "Unable to send reset email. Please try again." });
+  }
+};
+
+export const resetPassword = async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      return res.status(400).json({ message: "Reset token and new password are required" });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters long" });
+    }
+
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired password reset link." });
+    }
+
+    user.password = password;
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
+    await user.save();
+
+    res.status(200).json({ message: "Password updated successfully. You can now log in." });
+  } catch (error) {
+    console.log("Error in resetPassword:", error);
+    res.status(500).json({ message: "Unable to reset password. Please try again." });
+  }
+};
+
 //logout user
 export const logout = (req, res) => {
   // Clear the httpOnly cookie

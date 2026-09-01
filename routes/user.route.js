@@ -7,6 +7,8 @@ import {
   getUserById,
   deleteUser,
   logout,
+  forgotPassword,
+  resetPassword,
   getActiveUserCount,
   getUserRetentionRate,
   updateUserProfile,
@@ -22,6 +24,8 @@ router.post("/signup", signup);
 router.post("/login", login);
 router.post("/login-with-otp", loginWithOTP);
 router.post("/verify-otp", verifyOTP);
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password", resetPassword);
 router.post("/logout", logout);
 
 // Protected routes - specific paths first
