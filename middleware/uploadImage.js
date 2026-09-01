@@ -1,20 +1,7 @@
 import multer from "multer";
-import path from "path";
 
-// Set up multer for uploading the image to the local filesystem (total of 5 image array we will upload)
-
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "uploads/"); // Ensure this directory exists
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(
-      null,
-      file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname)
-    );
-  },
-});
+// Use memory storage for Vercel serverless (read-only filesystem)
+const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
   // Accept images only
@@ -24,7 +11,11 @@ const fileFilter = (req, file, cb) => {
   cb(null, true);
 };
 
-const upload = multer({ storage: storage, fileFilter: fileFilter });
+const upload = multer({ 
+  storage: storage, 
+  fileFilter: fileFilter,
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit per image
+});
 
 export const uploadImage = upload.array("images", 5); // 'images' is the field name in the form data
 export default uploadImage;

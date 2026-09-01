@@ -1,31 +1,27 @@
 import express from "express";
-import { createServer } from "http";
-import { Server } from "socket.io";
 import cors from "cors";
 
 //db connection
-import { connectDB } from "./db/db.js";
+import { connectDB } from "../db/db.js";
 
 //import routes
-import userRoutes from "./routes/user.route.js";
-import listingRoutes from "./routes/listing.route.js";
-import certificateRoutes from "./routes/certificate.route.js";
-import chatRoutes from "./routes/chat.route.js";
-import deliveryRoutes from "./routes/delivery.route.js";
-import bidRoutes from "./routes/bid.route.js";
-import transactionRoutes from "./routes/transaction.route.js";
-// Import Socket handlers
-import {
-  authenticateSocket,
-  handleConnection,
-} from "./socket/socketHandlers.js";
+import userRoutes from "../routes/user.route.js";
+import listingRoutes from "../routes/listing.route.js";
+import certificateRoutes from "../routes/certificate.route.js";
+import chatRoutes from "../routes/chat.route.js";
+import deliveryRoutes from "../routes/delivery.route.js";
+import bidRoutes from "../routes/bid.route.js";
+import transactionRoutes from "../routes/transaction.route.js";
 
 // Import Swagger configuration and Scalar API Reference
-import { specs } from "./swagger.js";
+import { specs } from "../swagger.js";
 import { apiReference } from "@scalar/express-api-reference";
 
+//middleware
+import cookieParser from "cookie-parser";
+
 const app = express();
-const server = createServer(app);
+
 // All allowed origins (both production and local dev)
 const allowedOrigins = [
   "https://rebootify.aadi01.me",
@@ -38,19 +34,6 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
 ];
-
-const io = new Server(server, {
-  cors: {
-    origin: allowedOrigins,
-    methods: ["GET", "POST"],
-    credentials: true,
-  },
-});
-
-const PORT = process.env.PORT || 3001;
-
-//middleware
-import cookieParser from "cookie-parser";
 
 // Configure CORS - allow all origins for both production and local dev
 const corsOptions = {
@@ -68,10 +51,35 @@ app.use(cookieParser());
 // Note: Image uploads are now handled by Cloudinary (cloud storage)
 // No local file storage needed for Vercel serverless deployment
 
-// Socket.IO middleware and connection handling
-io.use(authenticateSocket);
-io.on("connection", handleConnection(io));
+// Database connection - connect once and cache
+let isConnected = false;
 
+const ensureDBConnection = async () => {
+  if (isConnected) {
+    return;
+  }
+  try {
+    await connectDB();
+    isConnected = true;
+    console.log("Database connected successfully");
+  } catch (error) {
+    console.error("Database connection error:", error);
+    throw error;
+  }
+};
+
+// Database connection middleware
+app.use(async (req, res, next) => {
+  try {
+    await ensureDBConnection();
+    next();
+  } catch (error) {
+    console.error("Database connection error:", error);
+    res.status(500).json({ error: "Database connection failed" });
+  }
+});
+
+// API Documentation
 app.use(
   "/ref",
   apiReference({
@@ -86,16 +94,7 @@ app.use(
     },
   })
 );
-app.use(async (req, res, next) => {
-  try {
-    await connectDB();
-    console.log("Database connected successfully");
-    next();
-  } catch (error) {
-    console.error("Database connection error:", error);
-    res.status(500).json({ error: "Database connection failed" });
-  }
-});
+
 // Legacy redirect for old Swagger path
 app.get("/api-docs", (req, res) => {
   res.redirect("/ref");
@@ -120,6 +119,7 @@ app.use("/api/chats", chatRoutes);
 app.use("/api/deliveries", deliveryRoutes);
 app.use("/api/bids", bidRoutes);
 app.use("/api/transactions", transactionRoutes);
+
 // Root endpoint with API documentation links
 app.get("/", (req, res) => {
   res.json({
@@ -127,16 +127,10 @@ app.get("/", (req, res) => {
     documentation: {
       scalar_api: `${process.env.BASE_URL}/ref`,
     },
-
     version: "1.0.0",
     status: "active",
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`Server is running on :${PORT}`);
-  console.log(` API Documentation available at: ${process.env.BASE_URL}/ref`);
-  console.log(
-    `Legacy Swagger UI available at: ${process.env.BASE_URL}/api-docs`
-  );
-});
+// IMPORTANT: Export the Express app for Vercel serverless
+export default app;

@@ -1,4 +1,9 @@
 import Certificate from "../models/certificate.model.js";
+import {
+  sendCertificateApprovalEmail,
+  sendCertificateDisapprovalEmail,
+} from "../services/mailVerficationservice.js";
+import { uploadImageToCloudinary } from "../services/cloudinaryService.js";
 
 //Upload Certificate
 
@@ -10,16 +15,22 @@ export const uploadCertificate = async (req, res) => {
     }
     let { documentType, certificateNumber, issuingAuthority, validityPeriod } =
       req.body;
-    // Parse validityPeriod if sent as a JSON string (form-data)
+
+    // Handle validityPeriod - can be either a single date or an object with start/end
+    let startDate, endDate;
+
     if (typeof validityPeriod === "string") {
-      try {
-        validityPeriod = JSON.parse(validityPeriod);
-      } catch {
-        return res
-          .status(400)
-          .json({ message: "Invalid validityPeriod format" });
-      }
+      // If it's a string, treat it as the end date, set start date to now
+      startDate = new Date();
+      endDate = new Date(validityPeriod);
+    } else if (validityPeriod && typeof validityPeriod === "object") {
+      // If it's an object, parse start and end dates
+      startDate = new Date(validityPeriod.start || Date.now());
+      endDate = new Date(validityPeriod.end || validityPeriod);
+    } else {
+      return res.status(400).json({ message: "Invalid validityPeriod format" });
     }
+
     if (
       !documentType ||
       !certificateNumber ||
@@ -30,17 +41,17 @@ export const uploadCertificate = async (req, res) => {
         .status(400)
         .json({ message: "Please provide all required fields" });
     }
-    //validate certificate number format "CERT-YYYY-XXXXX"
-    const certNumberRegex = /^CERT-\d{4}-\d{5}$/;
-    if (!certNumberRegex.test(certificateNumber)) {
-      return res.status(400).json({
-        message:
-          "Invalid certificate number format. Expected format is CERT-YYYY-XXXXX",
-      });
-    }
+
+    // Remove the strict certificate number validation to allow any format
+    // const certNumberRegex = /^CERT-\d{4}-\d{5}$/;
+    // if (!certNumberRegex.test(certificateNumber)) {
+    //   return res.status(400).json({
+    //     message:
+    //       "Invalid certificate number format. Expected format is CERT-YYYY-XXXXX",
+    //   });
+    // }
+
     //validate validity period
-    const startDate = new Date(validityPeriod.start);
-    const endDate = new Date(validityPeriod.end);
     if (isNaN(startDate) || isNaN(endDate) || startDate >= endDate) {
       return res.status(400).json({ message: "Invalid validity period" });
     }
@@ -50,7 +61,20 @@ export const uploadCertificate = async (req, res) => {
         .status(400)
         .json({ message: "Please upload the certificate document" });
     }
-    const uploadDocument = `uploads/${req.file.filename}`;
+    
+    // Upload document to Cloudinary
+    let uploadDocument;
+    try {
+      uploadDocument = await uploadImageToCloudinary(req.file.buffer, 'certificates');
+      console.log('Certificate uploaded to Cloudinary:', uploadDocument);
+    } catch (uploadError) {
+      console.error('Error uploading certificate to Cloudinary:', uploadError);
+      return res.status(500).json({ 
+        message: 'Failed to upload certificate document. Please try again.',
+        error: process.env.NODE_ENV === 'development' ? uploadError.message : undefined
+      });
+    }
+    
     //create new certificate
     const newCertificate = new Certificate({
       uploadby: uploadBy,
@@ -115,10 +139,18 @@ export const getAllCertificates = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
+    const status = req.query.status; // Get status filter from query params
 
-    const totalCertificates = await Certificate.countDocuments();
+    // Build query filter
+    const filter = {};
+    if (status && status !== "") {
+      filter.status = status;
+    }
+
+    const totalCertificates = await Certificate.countDocuments(filter);
     const totalPages = Math.ceil(totalCertificates / limit);
-    const certificates = await Certificate.find()
+    const certificates = await Certificate.find(filter)
+      .populate("uploadby", "name email") // Populate user details
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 });
@@ -172,21 +204,50 @@ export const updateCertificateStatus = async (req, res) => {
     if (!user || user.userType !== "admin") {
       return res.status(403).json({ message: "Forbidden" });
     }
-    if (!["pending", "approved", "rejected"].includes(status)) {
+    if (!["pending", "approved", "disapproved"].includes(status)) {
       return res.status(400).json({ message: "Invalid status value" });
     }
-    const certificate = await Certificate.findById(certificateId);
+    const certificate = await Certificate.findById(certificateId).populate(
+      "uploadby",
+      "name email"
+    );
     if (!certificate) {
       return res.status(404).json({ message: "Certificate not found" });
     }
+
+    // Store old status to check if it changed
+    const oldStatus = certificate.status;
     certificate.status = status;
     await certificate.save();
-    res
-      .status(200)
-      .json({
-        message: "Certificate status updated successfully",
-        certificate,
-      });
+
+    // Send email notification if status changed to approved or disapproved
+    if (oldStatus !== status && certificate.uploadby) {
+      try {
+        if (status === "approved") {
+          await sendCertificateApprovalEmail(
+            certificate.uploadby.email,
+            certificate.uploadby.name,
+            certificate.documentType,
+            certificate.certificateNumber
+          );
+        } else if (status === "disapproved") {
+          await sendCertificateDisapprovalEmail(
+            certificate.uploadby.email,
+            certificate.uploadby.name,
+            certificate.documentType,
+            certificate.certificateNumber
+          );
+        }
+      } catch (emailError) {
+        console.error("Error sending email notification:", emailError);
+        // Don't fail the request if email fails, just log it
+      }
+    }
+
+    res.status(200).json({
+      message: "Certificate status updated successfully",
+      certificate,
+    });
   } catch (error) {
     console.log("Error in updateCertificateStatus:", error);
     res.status(500).json({ message: "Internal server error" });
@@ -249,18 +310,54 @@ export const updateCertificateDetails = async (req, res) => {
     }
     //check if file is uploaded
     if (req.file) {
-      const uploadDocument = `uploads/${req.file.filename}`;
-      certificate.uploadDocument = uploadDocument;
+      try {
+        const uploadDocument = await uploadImageToCloudinary(req.file.buffer, 'certificates');
+        certificate.uploadDocument = uploadDocument;
+        console.log('Certificate updated in Cloudinary:', uploadDocument);
+      } catch (uploadError) {
+        console.error('Error uploading certificate to Cloudinary:', uploadError);
+        return res.status(500).json({ 
+          message: 'Failed to upload certificate document. Please try again.',
+          error: process.env.NODE_ENV === 'development' ? uploadError.message : undefined
+        });
+      }
     }
     await certificate.save();
-    res
-      .status(200)
-      .json({
-        message: "Certificate details updated successfully",
-        certificate,
-      });
+    res.status(200).json({
+      message: "Certificate details updated successfully",
+      certificate,
+    });
   } catch (error) {
     console.log("Error in updateCertificateDetails:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Get certificate statistics for admin
+export const getCertificateStats = async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user || user.userType !== "admin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const totalCertificates = await Certificate.countDocuments();
+    const pending = await Certificate.countDocuments({ status: "pending" });
+    const approved = await Certificate.countDocuments({ status: "approved" });
+    const disapproved = await Certificate.countDocuments({
+      status: "disapproved",
+    });
+
+    res.status(200).json({
+      totalCertificates,
+      byStatus: {
+        pending,
+        approved,
+        disapproved,
+      },
+    });
+  } catch (error) {
+    console.log("Error in getCertificateStats:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };

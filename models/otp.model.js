@@ -2,10 +2,14 @@ import mongoose from "mongoose";
 
 const otpSchema = new mongoose.Schema(
   {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
     email: {
       type: String,
       required: true,
-      index: true,
     },
     otp: {
       type: String,
@@ -14,7 +18,7 @@ const otpSchema = new mongoose.Schema(
     expiresAt: {
       type: Date,
       required: true,
-      index: { expires: 0 }, // TTL index - auto-delete when expiresAt is reached
+      index: { expires: 0 }, // MongoDB TTL index - automatically deletes expired documents
     },
     verified: {
       type: Boolean,
@@ -23,6 +27,10 @@ const otpSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Index for faster queries
+otpSchema.index({ userId: 1, verified: 1 });
+otpSchema.index({ email: 1, verified: 1 });
 
 const OTP = mongoose.model("OTP", otpSchema);
 export default OTP;

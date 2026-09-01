@@ -69,7 +69,9 @@ const listingSchema = new mongoose.Schema(
     image_paths: {
       type: [String], // storing multiple image file paths as an array
     },
-
+    finalPrice: {
+      type: Number,
+    },
     status: {
       type: String,
       default: "open",

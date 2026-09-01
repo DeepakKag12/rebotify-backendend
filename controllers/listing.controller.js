@@ -4,7 +4,7 @@ import {
   detectProductCategory,
   validateAndEnhanceAnalysis,
 } from "../services/claudeService.js";
-import fs from "fs/promises";
+import { uploadMultipleImagesToCloudinary } from "../services/cloudinaryService.js";
 import Delivery from "../models/delivery.model.js";
 // AI-powered image analysis endpoint
 export const analyzeProductImagesEndpoint = async (req, res) => {
@@ -37,28 +37,17 @@ export const analyzeProductImagesEndpoint = async (req, res) => {
       });
     }
 
-    // Process uploaded files: get the filenames with their folder path
-    const imagePaths = req.files.map((file) => `uploads/${file.filename}`);
-    console.log(`📸 Processing ${imagePaths.length} images:`, imagePaths);
+    // Extract image buffers from multer memory storage
+    const imageBuffers = req.files.map((file) => file.buffer);
+    console.log(`📸 Processing ${imageBuffers.length} images in memory`);
 
     // Step 1: Quick category detection for optimized analysis
     console.log("🔍 Detecting product category...");
-    const categoryHint = await detectProductCategory(imagePaths[0]); // Use first image for category detection
+    const categoryHint = await detectProductCategory(imageBuffers[0]); // Use first image for category detection
     console.log(`📱 Detected category hint: ${categoryHint || "unknown"}`);
 
-    // If not electronics, clean up and return error
+    // If not electronics, return error (no cleanup needed with memory storage)
     if (!categoryHint) {
-      // Delete uploaded files since they're not valid product images
-      await Promise.all(
-        imagePaths.map(async (imagePath) => {
-          try {
-            await fs.unlink(imagePath);
-          } catch (unlinkError) {
-            console.warn("Warning: Could not delete file:", imagePath);
-          }
-        })
-      );
-
       return res.status(400).json({
         success: false,
         error: "invalid_product_type",
@@ -72,21 +61,37 @@ export const analyzeProductImagesEndpoint = async (req, res) => {
 
     // Step 2: Comprehensive AI analysis
     console.log("🤖 Running comprehensive AI analysis...");
-    const analysisResult = await analyzeProductImages(imagePaths, categoryHint);
+    const analysisResult = await analyzeProductImages(imageBuffers, categoryHint);
+
+    // Check if AI analysis returned an API error (403/401) - allow manual entry
+    if (analysisResult.api_error) {
+      console.log("⚠️ AI service unavailable, allowing manual entry");
+      return res.status(200).json({
+        success: true,
+        ai_available: false,
+        message: "AI analysis unavailable. Please fill in product details manually.",
+        data: {
+          analysis: analysisResult.fallback_data,
+          suggested_form_data: {
+            product_category: "",
+            brand: "",
+            model: "",
+            manufacture_year: new Date().getFullYear(),
+            condition: "good",
+            description: "",
+            accessories: "",
+            battery: "",
+            price: "",
+            price_type: "negotiable",
+          },
+          image_paths: [],
+          confidence_score: 0,
+        },
+      });
+    }
 
     // Check if AI analysis returned an error
     if (analysisResult.error === "not_electronics") {
-      // Delete uploaded files since they're not valid product images
-      await Promise.all(
-        imagePaths.map(async (imagePath) => {
-          try {
-            await fs.unlink(imagePath);
-          } catch (unlinkError) {
-            console.warn("Warning: Could not delete file:", imagePath);
-          }
-        })
-      );
-
       return res.status(400).json({
         success: false,
         error: "invalid_product_type",
@@ -134,9 +139,9 @@ export const analyzeProductImagesEndpoint = async (req, res) => {
         },
 
         // Metadata
-        image_paths: imagePaths,
+        image_paths: [],
         processing_info: {
-          images_analyzed: imagePaths.length,
+          images_analyzed: imageBuffers.length,
           category_detected: categoryHint,
           confidence_level: enhancedResult.confidence_scores?.overall || 0,
           quality_rating: enhancedResult.analysis_quality?.high_confidence
@@ -299,11 +304,22 @@ export const createListing = async (req, res) => {
     if (phone && !phoneRegex.test(phone)) {
       return res.status(400).json({ error: "Invalid phone number format." });
     }
-    // Process uploaded files: get the filenames with their folder path
-    const imagePaths =
-      req.files && Array.isArray(req.files)
-        ? req.files.map((file) => `uploads/${file.filename}`)
-        : [];
+    
+    // Upload images to Cloudinary
+    let imagePaths = [];
+    if (req.files && Array.isArray(req.files) && req.files.length > 0) {
+      try {
+        const imageBuffers = req.files.map(file => file.buffer);
+        imagePaths = await uploadMultipleImagesToCloudinary(imageBuffers, 'listings');
+        console.log('Uploaded images to Cloudinary:', imagePaths);
+      } catch (uploadError) {
+        console.error('Error uploading images to Cloudinary:', uploadError);
+        return res.status(500).json({ 
+          error: 'Failed to upload images. Please try again.',
+          details: process.env.NODE_ENV === 'development' ? uploadError.message : undefined
+        });
+      }
+    }
 
     // Convert checkbox array fields to comma-separated strings
     const accessoriesStr = Array.isArray(accessories)
@@ -361,6 +377,7 @@ export const createListing = async (req, res) => {
       phone,
       contact_preference: contactPreference || "phone",
       location,
+      address: address || "",
       status: "open", // Default status is open
     });
 
@@ -383,13 +400,13 @@ export const getAllStatusBasedListings = async (req, res) => {
     //we can get the status from the params useing query
     const status = req.query.status;
 
-    const listengs = await Listing.find({ status: status })
+    const listings = await Listing.find({ status: status })
       .skip(skip)
       .limit(limit)
       .exec();
 
     const totalListings = await Listing.countDocuments({
-      status: "open",
+      status: status,
     }).exec();
     const totalPages = Math.ceil(totalListings / limit);
 
@@ -397,7 +414,7 @@ export const getAllStatusBasedListings = async (req, res) => {
       page,
       totalPages,
       totalListings,
-      listengs,
+      listings,
     });
   } catch (error) {
     console.log("Error in getAllOpenListings:", error);
@@ -580,11 +597,20 @@ export const updateListing = async (req, res) => {
     // Process new uploaded files if any
     let imagePaths = listing.image_paths; // Keep existing images by default
     if (req.files && Array.isArray(req.files) && req.files.length > 0) {
-      // If new images are uploaded, replace old ones
-      imagePaths = req.files.map((file) => `uploads/${file.filename}`);
-
-      // Optional: Delete old image files from filesystem
-      // This requires fs module and proper error handling
+      try {
+        // Upload new images to Cloudinary
+        const imageBuffers = req.files.map(file => file.buffer);
+        imagePaths = await uploadMultipleImagesToCloudinary(imageBuffers, 'listings');
+        console.log('Uploaded updated images to Cloudinary:', imagePaths);
+        
+        // Note: Old Cloudinary images are kept. You can add deletion logic here if needed.
+      } catch (uploadError) {
+        console.error('Error uploading images to Cloudinary:', uploadError);
+        return res.status(500).json({ 
+          error: 'Failed to upload images. Please try again.',
+          details: process.env.NODE_ENV === 'development' ? uploadError.message : undefined
+        });
+      }
     }
 
     // Convert arrays to comma-separated strings
